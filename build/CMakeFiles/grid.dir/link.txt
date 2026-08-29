@@ -1,0 +1,1 @@
+/usr/bin/c++ -Wl,--dependency-file=CMakeFiles/grid.dir/link.d CMakeFiles/grid.dir/main.cpp.o -o grid  /usr/lib/libGLEW.so /usr/lib/libGLX.so /usr/lib/libOpenGL.so

@@ -1,0 +1,8 @@
+[
+{
+  "directory": "/home/nico/Projects/OpenGL/grid/build",
+  "command": "/usr/bin/c++  -I/home/nico/Projects/OpenGL/grid/include -std=gnu++17 -o CMakeFiles/grid.dir/main.cpp.o -c /home/nico/Projects/OpenGL/grid/main.cpp",
+  "file": "/home/nico/Projects/OpenGL/grid/main.cpp",
+  "output": "CMakeFiles/grid.dir/main.cpp.o"
+}
+]
