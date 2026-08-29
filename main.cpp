@@ -2,7 +2,13 @@
 #include <GLFW/glfw3.h>
 #include <math.h>
 #include <iostream>
+#include <vector>
 
+std::vector<unsigned char> canvasData;
+GLuint textureID;
+
+// initializing functions
+void handleCanvasResize(int width, int height);
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
 
@@ -43,13 +49,17 @@ int main()
         return -1;
     }
 
-    unsinged int VBO;
 
-    glGenBuffers(1, &VBO);
+    GLuint textureID;
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_2D, textureID);
 
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    // Set texture filtering (GL_NEAREST for crisp textures)
 
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    handleCanvasResize(SCR_WIDTH, SCR_HEIGHT);
 
 // render loop
     // -----------
@@ -84,6 +94,16 @@ void processInput(GLFWwindow *window)
         glfwSetWindowShouldClose(window, true);
 }
 
+void handleCanvasResize(int width, int height)
+{
+    // we resize the vector when needed
+    canvasData.resize(width * height * 3);
+    
+    // Bind and reallocate GPU texture
+    // Upload the resized vector data to the GPU (vibe coded)
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, canvasData.data());
+}
+
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
 // ---------------------------------------------------------------------------------------------
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
@@ -91,4 +111,6 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
     // make sure the viewport matches the new window dimensions; note that width and
     // height will be significantly larger than specified on retina displays.
     glViewport(0, 0, width, height);
+
+    handleCanvasResize(width, height);
 }

@@ -1,26 +1,25 @@
-cmake_minimum_required(VERSION 3.20)
-project(grid_project CXX)
+cmake_minimum_required(VERSION 3.16)
+project(grid CXX C) # Se añade C porque glad.c es código C puro
 
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON) # Para que Zed y clangd reconozcan las dependencias
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# 1. Buscar las librerías del sistema
+# 1. Buscar los paquetes de OpenGL y GLFW
 find_package(OpenGL REQUIRED)
-find_package(GLEW REQUIRED)
+find_package(glfw3 REQUIRED)
 
-# 2. DECLARAR EL EJECUTABLE PRIMERO (Esto soluciona el error)
-# Cambia 'main.cpp' por los archivos de código que uses
-add_executable(grid main.cpp)
+# 2. Agregar la carpeta 'include/' para que encuentre <glad/glad.h>
+include_directories(include)
 
-# 3. Incluir las carpetas de cabeceras (.h)
-target_include_directories(grid PRIVATE
-    ${GLEW_INCLUDE_DIRS}
-    ${OPENGL_INCLUDE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/include # Tu carpeta de dependencias local si tienes una
+# 3. Incluir main.cpp y src/glad.c
+add_executable(grid 
+    main.cpp
+    src/glad.c
 )
 
-# 4. ENLAZAR LAS LIBRERÍAS AL OBJETIVO YA CREADO
+# 4. Enlazar las librerías necesarias
 target_link_libraries(grid PRIVATE
-    GLEW::GLEW
     OpenGL::GL
+    glfw
+    ${CMAKE_DL_LIBS}
 )
