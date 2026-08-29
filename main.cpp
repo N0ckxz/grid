@@ -49,8 +49,7 @@ int main()
         return -1;
     }
 
-
-    GLuint textureID;
+    textureID;
     glGenTextures(1, &textureID);
     glBindTexture(GL_TEXTURE_2D, textureID);
 
