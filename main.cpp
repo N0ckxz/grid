@@ -172,6 +172,9 @@ void processInput(GLFWwindow *window)
 {
     if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
+
+    //if(window == GLFW_MOUSE_BUTTON_LEFT && )
+
 }
 
 void handleCanvasResize(int width, int height)
@@ -181,6 +184,29 @@ void handleCanvasResize(int width, int height)
 
     // Fill the vector with 255 (White) 
     std::fill(canvasData.begin(), canvasData.end(), 255);
+
+//IMPORTANT: Vibe coded, gotta study this, either way its just a way of visualizing the grid, dont think we will use this
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            int index = (y * width + x) * 3;
+
+            // Check if we are on a grid line (e.g., every 20 pixels)
+            if (x % 10 == 0 || y % 10 == 0) {
+                // Dark Grey Grid Lines ⬛
+                canvasData[index + 0] = 50;  
+                canvasData[index + 1] = 50;  
+                canvasData[index + 2] = 50;  
+            } else {
+                // White Background ⬜
+                canvasData[index + 0] = 255; 
+                canvasData[index + 1] = 255; 
+                canvasData[index + 2] = 255; 
+            }
+        }
+    }
+
+    // Fix of grid not working properly, gives allignment to the grid
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
     // Bind and reallocate GPU texture
     // Upload the resized vector data to the GPU (vibe coded)
