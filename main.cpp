@@ -1,3 +1,4 @@
+
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <math.h>
@@ -11,6 +12,7 @@ GLuint textureID;
 void handleCanvasResize(int width, int height); //since textureID is global now, we can just use width and height
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
+void drawLine(int x0, int y0, int x1, int y1); //We define the Bresenham's algorithm function, but this just works for a slope for now
 
 // settings
 const unsigned int SCR_WIDTH = 300;
@@ -28,7 +30,7 @@ const char *vertexShaderSource = "#version 460 core\n"
     "   TexCoord = aTexCoord;\n"
     "}\0";
 
-const char *fragmentShaderSource = "#version 460 core\n"
+  const char *fragmentShaderSource = "#version 460 core\n"
     "out vec4 FragColor;\n"
     "in vec2 TexCoord;\n"
     "uniform sampler2D ourTexture;\n"
@@ -119,7 +121,7 @@ float quadVertices[] = {
     glEnableVertexAttribArray(1);
 
 //Setting up canvas texture
-    
+
     textureID; //Texture declaration
     glGenTextures(1, &textureID); // ID and vector/pointer of textures
     glBindTexture(GL_TEXTURE_2D, textureID); //We bind the texture to GPU VRAM
@@ -140,16 +142,13 @@ float quadVertices[] = {
         processInput(window);
 
         // render
-        // ------
-        glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
 
         // We append our little programs
         glUseProgram(shaderProgram);
         glBindTexture(GL_TEXTURE_2D, textureID);
         glBindVertexArray(VAO);
         glDrawArrays(GL_TRIANGLES, 0, 6);
-        
+
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
         glfwSwapBuffers(window);
@@ -182,7 +181,7 @@ void handleCanvasResize(int width, int height)
     // we resize the vector when needed
     canvasData.resize(width * height * 3);
 
-    // Fill the vector with 255 (White) 
+    // Fill the vector with 255 (White)
     std::fill(canvasData.begin(), canvasData.end(), 255);
 
 //IMPORTANT: Vibe coded, gotta study this, either way its just a way of visualizing the grid, dont think we will use this
@@ -193,14 +192,14 @@ void handleCanvasResize(int width, int height)
             // Check if we are on a grid line (e.g., every 20 pixels)
             if (x % 10 == 0 || y % 10 == 0) {
                 // Dark Grey Grid Lines ⬛
-                canvasData[index + 0] = 50;  
-                canvasData[index + 1] = 50;  
-                canvasData[index + 2] = 50;  
+                canvasData[index + 0] = 50;
+                canvasData[index + 1] = 50;
+                canvasData[index + 2] = 50;
             } else {
                 // White Background ⬜
-                canvasData[index + 0] = 255; 
-                canvasData[index + 1] = 255; 
-                canvasData[index + 2] = 255; 
+                canvasData[index + 0] = 255;
+                canvasData[index + 1] = 255;
+                canvasData[index + 2] = 255;
             }
         }
     }
@@ -222,4 +221,23 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
     glViewport(0, 0, width, height);
 
     handleCanvasResize(width, height);
+}
+
+// this is just a sketch, I need to be able to use it without it being a straight line
+void drawLine(int x0, int y0, int x1, int y1)
+{
+    //Difference for the slope
+    int dx = x1 - x0;
+    int dy = y1 - 0;
+
+    if (dx != 0)
+    {
+       float m = dy/dx;
+       int y = y0;
+
+       for (int i = 0; i <= dx +1; i++)
+       {
+
+       }
+    }
 }
