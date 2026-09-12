@@ -1,4 +1,3 @@
-
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <math.h>
@@ -13,6 +12,7 @@ void handleCanvasResize(int width, int height); //since textureID is global now,
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
 void drawLine(int x0, int y0, int x1, int y1); //We define the Bresenham's algorithm function, but this just works for a slope for now
+int plotLineLow(int x0, int y0, int x1, int y1);
 
 // settings
 const unsigned int SCR_WIDTH = 300;
@@ -202,13 +202,7 @@ void handleCanvasResize(int width, int height)
                 canvasData[index + 2] = 255;
             }
         }
-    }
-
-    // Fix of grid not working properly, gives allignment to the grid
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-
-    // Bind and reallocate GPU texture
-    // Upload the resized vector data to the GPU (vibe coded)
+    } // Fix of grid not working properly, gives allignment to the grid glPixelStorei(GL_UNPACK_ALIGNMENT, 1); // Bind and reallocate GPU texture // Upload the resized vector data to the GPU (vibe coded)
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, canvasData.data());
 }
 
@@ -226,18 +220,31 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 // this is just a sketch, I need to be able to use it without it being a straight line
 void drawLine(int x0, int y0, int x1, int y1)
 {
-    //Difference for the slope
-    int dx = x1 - x0;
-    int dy = y1 - 0;
 
-    if (dx != 0)
-    {
-       float m = dy/dx;
-       int y = y0;
+}
 
-       for (int i = 0; i <= dx +1; i++)
-       {
+int plotLineLow(int x0, int y0, int x1, int y1)
+{
+    int dx = x1  - x0;
+    int dy = y1  - y0;
+    int yi = 1;
 
-       }
+    if (dy < 0) {
+        yi = -1;
+        dy = -dy;
+    } else {
+        int D = (2 * dy) - dx;
+        int y = y0;
     }
+
+    for (int x = x1; x < x1; x++) {
+
+    }
+}
+
+void plot(int x, int y, unsigned char r, unsigned char g, unsigned char b)
+{
+    if (x < 0 || x >= SCR_WIDTH || y < 0 || y >= SCR_HEIGHT) return;
+
+    int index = (y * SCR_WIDTH + x) * 4;
 }
