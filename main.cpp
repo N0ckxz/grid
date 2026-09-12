@@ -11,7 +11,7 @@ GLuint textureID;
 void handleCanvasResize(int width, int height); //since textureID is global now, we can just use width and height
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
-void drawLine(int x0, int y0, int x1, int y1); //We define the Bresenham's algorithm function, but this just works for a slope for now
+void drawLine(int x0, int x1, int y0, int y1);
 int plotLineLow(int x0, int y0, int x1, int y1);
 
 // settings
@@ -173,7 +173,6 @@ void processInput(GLFWwindow *window)
         glfwSetWindowShouldClose(window, true);
 
     //if(window == GLFW_MOUSE_BUTTON_LEFT && )
-
 }
 
 void handleCanvasResize(int width, int height)
@@ -202,7 +201,8 @@ void handleCanvasResize(int width, int height)
                 canvasData[index + 2] = 255;
             }
         }
-    } // Fix of grid not working properly, gives allignment to the grid glPixelStorei(GL_UNPACK_ALIGNMENT, 1); // Bind and reallocate GPU texture // Upload the resized vector data to the GPU (vibe coded)
+    } // Fix of grid not working properly, gives allignment to the grid
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1); // Bind and reallocate GPU texture // Upload the resized vector data to the GPU (vibe coded)
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, canvasData.data());
 }
 
@@ -217,12 +217,12 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
     handleCanvasResize(width, height);
 }
 
-// this is just a sketch, I need to be able to use it without it being a straight line
-void drawLine(int x0, int y0, int x1, int y1)
+void drawLine(int x0, int x1, int y0, int y1)
 {
 
 }
 
+// function for plotting in the lower parts of the octant
 int plotLineLow(int x0, int y0, int x1, int y1)
 {
     int dx = x1  - x0;
@@ -237,14 +237,21 @@ int plotLineLow(int x0, int y0, int x1, int y1)
         int y = y0;
     }
 
-    for (int x = x1; x < x1; x++) {
+    for (int x = x0; x < x1; x++) {
 
     }
 }
 
 void plot(int x, int y, unsigned char r, unsigned char g, unsigned char b)
 {
+    // check how the bounds are against the current resolution
     if (x < 0 || x >= SCR_WIDTH || y < 0 || y >= SCR_HEIGHT) return;
 
+    // Calculating the offset for 3 channels
     int index = (y * SCR_WIDTH + x) * 4;
+
+    // Updating the global canvas vector
+    canvasData[index + 0] = r;
+    canvasData[index + 1] = g;
+    canvasData[index + 2] = b;
 }
