@@ -13,6 +13,7 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
 void drawLine(int x0, int x1, int y0, int y1);
 int plotLineLow(int x0, int y0, int x1, int y1);
+void plot(int x, int y, unsigned char r, unsigned char g, unsigned char b);
 
 // settings
 const unsigned int SCR_WIDTH = 300;
@@ -223,25 +224,35 @@ void drawLine(int x0, int x1, int y0, int y1)
 }
 
 // function for plotting in the lower parts of the octant
-int plotLineLow(int x0, int y0, int x1, int y1)
+int plotLineLow(int x0, int y0, int x1, int y1, unsigned char r, unsigned char g, unsigned char b)
 {
-    int dx = x1  - x0;
-    int dy = y1  - y0;
+    int dx = x1 - x0;
+    int dy = y1 - y0;
     int yi = 1;
 
+    // handle downward slopes
     if (dy < 0) {
         yi = -1;
         dy = -dy;
-    } else {
-        int D = (2 * dy) - dx;
-        int y = y0;
     }
 
-    for (int x = x0; x < x1; x++) {
+    int D = (2 * dy) - dx;
+    int y = y0;
 
+    for (int x = x0; x <= x1; x++)
+    {
+        plot(x, y, r, g, b);
+
+        if (D > 0) {
+            y += yi;
+            D += 2 * (dy - dx);
+        } else {
+            D += 2 * dy;
+        }
     }
 }
 
+// with a little AI help*
 void plot(int x, int y, unsigned char r, unsigned char g, unsigned char b)
 {
     // check how the bounds are against the current resolution
