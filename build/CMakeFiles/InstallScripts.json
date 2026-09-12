@@ -1,7 +1,0 @@
-{
-	"InstallScripts" : 
-	[
-		"/home/nico/Projects/OpenGL/grid/build/cmake_install.cmake"
-	],
-	"Parallel" : false
-}

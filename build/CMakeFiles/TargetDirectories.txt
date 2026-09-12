@@ -1,3 +1,0 @@
-/home/nico/Projects/OpenGL/grid/build/CMakeFiles/grid.dir
-/home/nico/Projects/OpenGL/grid/build/CMakeFiles/edit_cache.dir
-/home/nico/Projects/OpenGL/grid/build/CMakeFiles/rebuild_cache.dir
