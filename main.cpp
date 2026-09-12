@@ -11,8 +11,9 @@ GLuint textureID;
 void handleCanvasResize(int width, int height); //since textureID is global now, we can just use width and height
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
-void drawLine(int x0, int x1, int y0, int y1);
-int plotLineLow(int x0, int y0, int x1, int y1);
+void drawLine(int x0, int x1, int y0, int y1, unsigned char r, unsigned char g, unsigned char b);
+int plotLineLow(int x0, int y0, int x1, int y1, unsigned char r, unsigned char g, unsigned char b);
+int plotLineHigh(int x0, int y0, int x1, int y1, unsigned char r, unsigned char g, unsigned char b);
 void plot(int x, int y, unsigned char r, unsigned char g, unsigned char b);
 
 // settings
@@ -202,8 +203,11 @@ void handleCanvasResize(int width, int height)
                 canvasData[index + 2] = 255;
             }
         }
-    } // Fix of grid not working properly, gives allignment to the grid
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1); // Bind and reallocate GPU texture // Upload the resized vector data to the GPU (vibe coded)
+    }
+
+    // Fix of grid not working properly, gives allignment to the grid
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1); // Bind and reallocate GPU texture
+    // Upload the resized vector data to the GPU (vibe coded)
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, canvasData.data());
 }
 
@@ -218,9 +222,30 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
     handleCanvasResize(width, height);
 }
 
-void drawLine(int x0, int x1, int y0, int y1)
+// sadly, made with AI, ran out of time
+void drawLine(int x0, int x1, int y0, int y1, unsigned char r, unsigned char g, unsigned char b)
 {
-
+    // Check if the line is horizontal-leaning (|slope| <= 1) or vertical-leaning (|slope| > 1)
+    if (abs(y1 - y0) < abs(x1 - x0))
+    {
+        // Low slope: step along X
+        // Ensure we always draw from left to right (x0 <= x1)
+        if (x0 > x1) {
+            plotLineLow(x1, y1, x0, y0, r, g, b);
+        } else {
+            plotLineLow(x0, y0, x1, y1, r, g, b);
+        }
+    }
+    else
+    {
+        // High slope: step along Y
+        // Ensure we always draw from bottom to top (y0 <= y1)
+        if (y0 > y1) {
+            plotLineHigh(x1, y1, x0, y0, r, g, b);
+        } else {
+            plotLineHigh(x0, y0, x1, y1, r, g, b);
+        }
+    }
 }
 
 // function for plotting in the lower parts of the octant
@@ -239,6 +264,7 @@ int plotLineLow(int x0, int y0, int x1, int y1, unsigned char r, unsigned char g
     int D = (2 * dy) - dx;
     int y = y0;
 
+    // drive the loop along the y axis
     for (int x = x0; x <= x1; x++)
     {
         plot(x, y, r, g, b);
@@ -248,6 +274,35 @@ int plotLineLow(int x0, int y0, int x1, int y1, unsigned char r, unsigned char g
             D += 2 * (dy - dx);
         } else {
             D += 2 * dy;
+        }
+    }
+}
+
+int plotLineHigh(int x0, int y0, int x1, int y1, unsigned char r, unsigned char g, unsigned char b)
+{
+    int dx = x1 - x0;
+    int dy = y1 - y0;
+    int xi = 1;
+
+    // handle upward slopes
+    if (dx < 0) {
+        xi = -1;
+        dx = -dx;
+    }
+
+    int D = (2 * dx) - dy;
+    int x = x0;
+
+    // drive the loop along the x axis
+    for (int y = y0; y <= y1; y++)
+    {
+        plot(x, y, r, g, b);
+
+        if (D > 0) {
+            x += xi;
+            D += 2 * (dx - dy);
+        } else {
+            D += 2 * dx;
         }
     }
 }
