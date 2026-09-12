@@ -167,15 +167,33 @@ float quadVertices[] = {
 // process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
 void processInput(GLFWwindow *window)
 {
-    if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+    if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, true);
+    }
 
-    //if(window == GLFW_MOUSE_BUTTON_LEFT && )
-
-
+    // handles the cursor position in the coordinates inside the window, dont know the interaction with window resizing tho
     double xpos, ypos;
     glfwGetCursorPos(window, &xpos, &ypos);
     std::cout << "X-position: " << xpos << " |-Y position: " << ypos << "\n";
+
+    double x0, x1;
+    double y0, y1;
+    bool leftMouseButtonPressed = false;
+
+    if (glfwGetKey(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE) {
+        // we put the mouse coordinate information in some variables
+        x0 = xpos;
+        y0 = ypos;
+
+        leftMouseButtonPressed =  true;
+
+        if (leftMouseButtonPressed == true) {
+            x1 = xpos;
+            y1 = ypos;
+        }
+
+        drawLine(xpos, );
+    }
 }
 
 void handleCanvasResize(int width, int height)
