@@ -135,12 +135,11 @@ float quadVertices[] = {
 
     handleCanvasResize(SCR_WIDTH, SCR_HEIGHT);
 
-// render loop
+// RENDER LOOP
     // -----------
     while (!glfwWindowShouldClose(window))
     {
         // input
-        // -----
         processInput(window);
 
         // render
@@ -152,7 +151,6 @@ float quadVertices[] = {
         glDrawArrays(GL_TRIANGLES, 0, 6);
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
-        // -------------------------------------------------------------------------------
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
@@ -162,19 +160,22 @@ float quadVertices[] = {
     glDeleteProgram(shaderProgram);
 
     // glfw: terminate, clearing all previously allocated GLFW resources.
-    // ------------------------------------------------------------------
     glfwTerminate();
     return 0;
 }
 
 // process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
-// ---------------------------------------------------------------------------------------------------------
 void processInput(GLFWwindow *window)
 {
     if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 
     //if(window == GLFW_MOUSE_BUTTON_LEFT && )
+
+
+    double xpos, ypos;
+    glfwGetCursorPos(window, &xpos, &ypos);
+    std::cout << "X-position: " << xpos << " |-Y position: " << ypos << "\n";
 }
 
 void handleCanvasResize(int width, int height)
