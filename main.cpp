@@ -20,10 +20,12 @@ void plot(int x, int y, unsigned char r, unsigned char g, unsigned char b);
 const unsigned int SCR_WIDTH = 300;
 const unsigned int SCR_HEIGHT = 300;
 
-double startY = 0;
-double startX = 0;
-double endY = 0;
-double endX= 0;
+int startY = 0;
+int startX = 0;
+int endY = 0;
+int endX= 0;
+
+bool firstClick = false;
 
 //Shaders
 //I dont understand how this works, some day though
@@ -152,6 +154,7 @@ float quadVertices[] = {
         // We append our little programs
         glUseProgram(shaderProgram);
         glBindTexture(GL_TEXTURE_2D, textureID);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, SCR_WIDTH, SCR_HEIGHT, GL_RGB, GL_UNSIGNED_BYTE, canvasData.data());
         glBindVertexArray(VAO);
         glDrawArrays(GL_TRIANGLES, 0, 6);
 
@@ -172,30 +175,32 @@ float quadVertices[] = {
 // process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
 void processInput(GLFWwindow *window)
 {
-    if(glfwGetMouseButton(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+    if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, true);
     }
 
     // handles the cursor position in the coordinates inside the window, dont know the interaction with window resizing tho
-    double xpos, ypos;
-    glfwGetCursorPos(window, &xpos, &ypos);
-    std::cout << "X-position: " << xpos << " |-Y position: " << ypos << "\n";
+    double dXpos, dYpos;
+    glfwGetCursorPos(window, &dXpos, &dYpos);
+    std::cout << "X-position: " << dXpos << " |-Y position: " << dYpos << "\n";
 
-    bool leftMouseButtonPressed = false;
+    int xpos = (int)dXpos;
+    int ypos = (int)dYpos;
 
-    if (glfwGetKey(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE) {
+    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
+        firstClick = true;
+
         // we put the mouse coordinate information in some variables
         startX = xpos;
         startY = ypos;
 
-        leftMouseButtonPressed =  true;
-
-        if (leftMouseButtonPressed == true) {
+        if (firstClick == true) {
             endX = xpos;
             endY = ypos;
-        }
 
-        drawLine(startX, startY, endX, endY, 1.0, 1.0, 1.0);
+            drawLine(startX, startY, endX, endY, 255, 0, 0);
+            firstClick = false;
+        }
     }
 }
 
