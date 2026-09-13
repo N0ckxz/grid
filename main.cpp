@@ -1,6 +1,6 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#include <math.h>
+#include <cmath>
 #include <iostream>
 #include <vector>
 
@@ -11,7 +11,7 @@ GLuint textureID;
 void handleCanvasResize(int width, int height); //since textureID is global now, we can just use width and height
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
-void drawLine(int x0, int x1, int y0, int y1, unsigned char r, unsigned char g, unsigned char b);
+void drawLine(int x0, int y0, int x1, int y1, unsigned char r, unsigned char g, unsigned char b);
 int plotLineLow(int x0, int y0, int x1, int y1, unsigned char r, unsigned char g, unsigned char b);
 int plotLineHigh(int x0, int y0, int x1, int y1, unsigned char r, unsigned char g, unsigned char b);
 void plot(int x, int y, unsigned char r, unsigned char g, unsigned char b);
@@ -19,6 +19,11 @@ void plot(int x, int y, unsigned char r, unsigned char g, unsigned char b);
 // settings
 const unsigned int SCR_WIDTH = 300;
 const unsigned int SCR_HEIGHT = 300;
+
+double startY = 0;
+double startX = 0;
+double endY = 0;
+double endX= 0;
 
 //Shaders
 //I dont understand how this works, some day though
@@ -167,7 +172,7 @@ float quadVertices[] = {
 // process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
 void processInput(GLFWwindow *window)
 {
-    if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+    if(glfwGetMouseButton(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, true);
     }
 
@@ -176,23 +181,21 @@ void processInput(GLFWwindow *window)
     glfwGetCursorPos(window, &xpos, &ypos);
     std::cout << "X-position: " << xpos << " |-Y position: " << ypos << "\n";
 
-    double x0, x1;
-    double y0, y1;
     bool leftMouseButtonPressed = false;
 
     if (glfwGetKey(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE) {
         // we put the mouse coordinate information in some variables
-        x0 = xpos;
-        y0 = ypos;
+        startX = xpos;
+        startY = ypos;
 
         leftMouseButtonPressed =  true;
 
         if (leftMouseButtonPressed == true) {
-            x1 = xpos;
-            y1 = ypos;
+            endX = xpos;
+            endY = ypos;
         }
 
-        drawLine(xpos, );
+        drawLine(startX, startY, endX, endY, 1.0, 1.0, 1.0);
     }
 }
 
@@ -242,7 +245,7 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 }
 
 // sadly, made with AI, ran out of time
-void drawLine(int x0, int x1, int y0, int y1, unsigned char r, unsigned char g, unsigned char b)
+void drawLine(int x0, int y0, int x1, int y1, unsigned char r, unsigned char g, unsigned char b)
 {
     // Check if the line is horizontal-leaning (|slope| <= 1) or vertical-leaning (|slope| > 1)
     if (abs(y1 - y0) < abs(x1 - x0))
@@ -333,7 +336,7 @@ void plot(int x, int y, unsigned char r, unsigned char g, unsigned char b)
     if (x < 0 || x >= SCR_WIDTH || y < 0 || y >= SCR_HEIGHT) return;
 
     // Calculating the offset for 3 channels
-    int index = (y * SCR_WIDTH + x) * 4;
+    int index = (y * SCR_WIDTH + x) * 3;
 
     // Updating the global canvas vector
     canvasData[index + 0] = r;
