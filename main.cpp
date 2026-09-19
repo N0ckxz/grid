@@ -19,10 +19,12 @@ void drawLine(int x0, int y0, int x1, int y1, unsigned char r, unsigned char g, 
 void plotLineLow(int x0, int y0, int x1, int y1, unsigned char r, unsigned char g, unsigned char b);
 void plotLineHigh(int x0, int y0, int x1, int y1, unsigned char r, unsigned char g, unsigned char b);
 void plot(int x, int y, unsigned char r, unsigned char g, unsigned char b);
+void plotCell(int cellX, int cellY, unsigned char r, unsigned char g, unsigned char b);
 
 // settings
 const unsigned int SCR_WIDTH = 300;
 const unsigned int SCR_HEIGHT = 300;
+const int CELL_SIZE = 10; // Size of every block in the grid
 
 int startY = 0;
 int startX = 0;
@@ -191,24 +193,30 @@ void processInput(GLFWwindow *window)
     int winWidth, winHeight;
     glfwGetWindowSize(window, &winWidth, &winHeight);
 
+    int pixelX = (int)((dXpos / winWidth) * canvasWidth);
+    int pixelY = (int)((dYpos / winHeight) * canvasHeight);
+
+    int cellX = pixelX / CELL_SIZE;
+    int cellY = pixelY / CELL_SIZE;
+
     static bool lastMouseState = false;
     bool currentMouseState = (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS);
 
-    int xpos = (int)((dXpos / winWidth) * canvasWidth);
-    int ypos = (int)((dYpos / winHeight) * canvasHeight);
-
     if (currentMouseState && !lastMouseState) {
         if (!firstClick) {
-            startX = xpos;
-            startY = ypos;
+            startX = cellX;
+            startY = cellY;
             firstClick = true;
-            std::cout << "A point: (" << startX << ", " << startY << ")\n";
+
+            plotCell(startX, startY, 255, 0, 0);
+
+            std::cout << "Celda inicial: (" << startX << ", " << startY << ")\n";
         } else {
-            endX = xpos;
-            endY = ypos;
+            endX = cellX;
+            endY = cellY;
             drawLine(startX, startY, endX, endY, 255, 0, 0);
             firstClick = false;
-            std::cout << "Line drawn till: (" << endX << ", " << endY << ")\n";
+            std::cout << "Linea dibujada hasta celda: (" << endX << ", " << endY << ")\n";
         }
     }
     lastMouseState = currentMouseState;
@@ -224,22 +232,21 @@ void handleCanvasResize(int width, int height)
     // Fill the vector with 255 (White)
     std::fill(canvasData.begin(), canvasData.end(), 255);
 
-//IMPORTANT: Vibe coded, gotta study this, either way its just a way of visualizing the grid, dont think we will use this
-    for (int y = 0; y < height; y++) {
-        for (int x = 0; x < width; x++) {
-            int index = (y * width + x) * 3;
+    for (int y = 0; y < canvasHeight; y++) {
+        for (int x = 0; x < canvasWidth; x++) {
+            int index = (y * canvasWidth + x) * 3;
 
-            // Check if we are on a grid line (e.g., every 20 pixels)
-            if (x % 10 == 0 || y % 10 == 0) {
-                // Dark Grey Grid Lines ⬛
-                canvasData[index + 0] = 50;
-                canvasData[index + 1] = 50;
-                canvasData[index + 2] = 50;
+            int cellX = x / CELL_SIZE;
+            int cellY = y / CELL_SIZE;
+
+            if ((cellX + cellY) % 2 == 0) {
+                canvasData[index + 0] = 250;
+                canvasData[index + 1] = 250;
+                canvasData[index + 2] = 250;
             } else {
-                // White Background ⬜
-                canvasData[index + 0] = 255;
-                canvasData[index + 1] = 255;
-                canvasData[index + 2] = 255;
+                canvasData[index + 0] = 230;
+                canvasData[index + 1] = 230;
+                canvasData[index + 2] = 230;
             }
         }
     }
@@ -306,7 +313,7 @@ void plotLineLow(int x0, int y0, int x1, int y1, unsigned char r, unsigned char 
     // drive the loop along the y axis
     for (int x = x0; x <= x1; x++)
     {
-        plot(x, y, r, g, b);
+        plotCell(x, y, r, g, b);
 
         if (D > 0) {
             y += yi;
@@ -335,7 +342,7 @@ void plotLineHigh(int x0, int y0, int x1, int y1, unsigned char r, unsigned char
     // drive the loop along the x axis
     for (int y = y0; y <= y1; y++)
     {
-        plot(x, y, r, g, b);
+        plotCell(x, y, r, g, b);
 
         if (D > 0) {
             x += xi;
@@ -360,4 +367,21 @@ void plot(int x, int y, unsigned char r, unsigned char g, unsigned char b)
     canvasData[index + 0] = r;
     canvasData[index + 1] = g;
     canvasData[index + 2] = b;
+}
+
+// Gets the coordinates of a BLOCK, not a pixel (like the last time)
+void plotCell(int cellX, int cellY, unsigned char r, unsigned char g, unsigned char b)
+{
+    int startPixelX = cellX * CELL_SIZE;
+    int startPixelY = cellY * CELL_SIZE;
+
+    // filling the block with CELL_SIZE x CELL_SIZE
+    for (int y = 0; y < CELL_SIZE; y++) {
+        for (int x = 0; x < CELL_SIZE; x++) {
+            int currentPixelX = startPixelX + x;
+            int currentPixelY = startPixelY + y;
+
+            plot(currentPixelX, currentPixelY, r, g, b);
+        }
+    }
 }
