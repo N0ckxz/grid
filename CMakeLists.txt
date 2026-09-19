@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 project(grid CXX C) # Se añade C porque glad.c es código C puro
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
