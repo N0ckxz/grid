@@ -7,13 +7,17 @@
 std::vector<unsigned char> canvasData;
 GLuint textureID;
 
+// Dynamic variables for the size of the canvas
+int canvasWidth = 300;
+int canvasHeight = 300;
+
 // initializing functions
 void handleCanvasResize(int width, int height); //since textureID is global now, we can just use width and height
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
 void drawLine(int x0, int y0, int x1, int y1, unsigned char r, unsigned char g, unsigned char b);
-int plotLineLow(int x0, int y0, int x1, int y1, unsigned char r, unsigned char g, unsigned char b);
-int plotLineHigh(int x0, int y0, int x1, int y1, unsigned char r, unsigned char g, unsigned char b);
+void plotLineLow(int x0, int y0, int x1, int y1, unsigned char r, unsigned char g, unsigned char b);
+void plotLineHigh(int x0, int y0, int x1, int y1, unsigned char r, unsigned char g, unsigned char b);
 void plot(int x, int y, unsigned char r, unsigned char g, unsigned char b);
 
 // settings
@@ -154,7 +158,7 @@ float quadVertices[] = {
         // We append our little programs
         glUseProgram(shaderProgram);
         glBindTexture(GL_TEXTURE_2D, textureID);
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, SCR_WIDTH, SCR_HEIGHT, GL_RGB, GL_UNSIGNED_BYTE, canvasData.data());
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, canvasWidth, canvasHeight, GL_RGB, GL_UNSIGNED_BYTE, canvasData.data());
         glBindVertexArray(VAO);
         glDrawArrays(GL_TRIANGLES, 0, 6);
 
@@ -175,37 +179,45 @@ float quadVertices[] = {
 // process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
 void processInput(GLFWwindow *window)
 {
-    if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, true);
     }
 
-    // handles the cursor position in the coordinates inside the window, dont know the interaction with window resizing tho
     double dXpos, dYpos;
     glfwGetCursorPos(window, &dXpos, &dYpos);
-    std::cout << "X-position: " << dXpos << " |-Y position: " << dYpos << "\n";
+    //int xpos = (int)dXpos;
+    //int ypos = (int)dYpos;
 
-    int xpos = (int)dXpos;
-    int ypos = (int)dYpos;
+    int winWidth, winHeight;
+    glfwGetWindowSize(window, &winWidth, &winHeight);
 
-    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
-        firstClick = true;
+    static bool lastMouseState = false;
+    bool currentMouseState = (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS);
 
-        // we put the mouse coordinate information in some variables
-        startX = xpos;
-        startY = ypos;
+    int xpos = (int)((dXpos / winWidth) * canvasWidth);
+    int ypos = (int)((dYpos / winHeight) * canvasHeight);
 
-        if (firstClick == true) {
+    if (currentMouseState && !lastMouseState) {
+        if (!firstClick) {
+            startX = xpos;
+            startY = ypos;
+            firstClick = true;
+            std::cout << "A point: (" << startX << ", " << startY << ")\n";
+        } else {
             endX = xpos;
             endY = ypos;
-
             drawLine(startX, startY, endX, endY, 255, 0, 0);
             firstClick = false;
+            std::cout << "Line drawn till: (" << endX << ", " << endY << ")\n";
         }
     }
+    lastMouseState = currentMouseState;
 }
 
 void handleCanvasResize(int width, int height)
 {
+    canvasWidth = width;
+    canvasHeight = height;
     // we resize the vector when needed
     canvasData.resize(width * height * 3);
 
@@ -276,7 +288,7 @@ void drawLine(int x0, int y0, int x1, int y1, unsigned char r, unsigned char g, 
 }
 
 // function for plotting in the lower parts of the octant
-int plotLineLow(int x0, int y0, int x1, int y1, unsigned char r, unsigned char g, unsigned char b)
+void plotLineLow(int x0, int y0, int x1, int y1, unsigned char r, unsigned char g, unsigned char b)
 {
     int dx = x1 - x0;
     int dy = y1 - y0;
@@ -305,7 +317,7 @@ int plotLineLow(int x0, int y0, int x1, int y1, unsigned char r, unsigned char g
     }
 }
 
-int plotLineHigh(int x0, int y0, int x1, int y1, unsigned char r, unsigned char g, unsigned char b)
+void plotLineHigh(int x0, int y0, int x1, int y1, unsigned char r, unsigned char g, unsigned char b)
 {
     int dx = x1 - x0;
     int dy = y1 - y0;
@@ -338,10 +350,11 @@ int plotLineHigh(int x0, int y0, int x1, int y1, unsigned char r, unsigned char 
 void plot(int x, int y, unsigned char r, unsigned char g, unsigned char b)
 {
     // check how the bounds are against the current resolution
-    if (x < 0 || x >= SCR_WIDTH || y < 0 || y >= SCR_HEIGHT) return;
+    if (x < 0 || x >= canvasWidth || y < 0 || y >= canvasHeight) return;
 
     // Calculating the offset for 3 channels
-    int index = (y * SCR_WIDTH + x) * 3;
+    int flippedY = (canvasHeight - 1) - y;
+    int index = (flippedY * canvasWidth + x) * 3;
 
     // Updating the global canvas vector
     canvasData[index + 0] = r;
