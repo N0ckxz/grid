@@ -29,6 +29,8 @@ void plotLineHigh(int x0, int y0, int x1, int y1, unsigned char r,
 void plot(int x, int y, unsigned char r, unsigned char g, unsigned char b);
 void plotCell(int cellX, int cellY, unsigned char r, unsigned char g,
               unsigned char b);
+void drawCircle(int xc, int yc, int x, int y);
+void bresCircle(int xc, int yc, int r);
 
 // settings
 const unsigned int SCR_WIDTH = 300;
@@ -194,6 +196,10 @@ int main() {
 void processInput(GLFWwindow *window) {
   if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
     glfwSetWindowShouldClose(window, true);
+  }
+
+  if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+    bresCircle(30, 30, 15);
   }
 
   double dXpos, dYpos;
@@ -391,5 +397,34 @@ void plotCell(int cellX, int cellY, unsigned char r, unsigned char g,
 
       plot(currentPixelX, currentPixelY, r, g, b);
     }
+  }
+}
+
+// first drawCircle implementation, not gonna work tho
+void drawCircle(int xc, int yc, int x, int y) {
+  plotCell(xc + x, yc + y, 255, 0, 0);
+  plotCell(xc - x, yc + y, 255, 0, 0);
+  plotCell(xc - x, yc - y, 255, 0, 0);
+  plotCell(xc + x, yc - y, 255, 0, 0);
+  plotCell(xc + y, yc + x, 255, 0, 0);
+  plotCell(xc - y, yc + x, 255, 0, 0);
+  plotCell(xc - y, yc - x, 255, 0, 0);
+  plotCell(xc + y, yc - x, 255, 0, 0);
+}
+
+void bresCircle(int xc, int yc, int r) {
+  int x = 0, y = r;
+  int d = 3 - (2 * r);
+  drawCircle(xc, yc, x, y);
+
+  while (y >= x) {
+    x++;
+    if (d > 0) {
+      y--;
+      d = d + 4 * (x - y) + 10;
+    } else {
+      d = d + 4 * x + 6;
+    }
+    drawCircle(xc, yc, x, y);
   }
 }
