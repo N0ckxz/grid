@@ -42,7 +42,8 @@ int startX = 0;
 int endY = 0;
 int endX = 0;
 
-bool firstClick = false;
+bool firstLineClick = false;
+bool firstCircleClick = false;
 
 // Shaders
 // I dont understand how this works, some day though
@@ -198,10 +199,7 @@ void processInput(GLFWwindow *window) {
     glfwSetWindowShouldClose(window, true);
   }
 
-  if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-    bresCircle(30, 30, 15);
-  }
-
+  // CURSOR POSITION IN GRID LOGIC
   double dXpos, dYpos;
   glfwGetCursorPos(window, &dXpos, &dYpos);
   // int xpos = (int)dXpos;
@@ -216,15 +214,43 @@ void processInput(GLFWwindow *window) {
   int cellX = pixelX / CELL_SIZE;
   int cellY = pixelY / CELL_SIZE;
 
-  static bool lastMouseState = false;
-  bool currentMouseState =
-      (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS);
+  // CIRCLE DRAWING ALGORITHM
+  static bool lastRightClickMouseState = false;
+  bool currentRightClickMouseState =
+      (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS);
 
-  if (currentMouseState && !lastMouseState) {
-    if (!firstClick) {
+  if (currentRightClickMouseState && !lastRightClickMouseState) {
+    if (!firstCircleClick) {
       startX = cellX;
       startY = cellY;
-      firstClick = true;
+      firstCircleClick = true;
+
+      plotCell(startX, startY, 0, 0 ,0);
+
+      std::cout << "Initial point: (" << startX << ", " << startY << ")\n";
+    } else {
+      endX = cellX;
+      endY = cellY;
+      // Parse and calculation of the radius
+      int radius = (int)(sqrt(((endX-startX)*(endX-startX))+((endY-startY)*(endY-startY))));
+      bresCircle(startX, startY, radius);
+      firstCircleClick = false;
+
+      std::cout << "Circle drawn in: (" << endX << ", " << endY << ")\n";
+    }
+  }
+  lastRightClickMouseState = currentRightClickMouseState;
+
+  // LINE DRAWING ALGORITHM
+  static bool lastLeftClickMouseState = false;
+  bool currentLeftClickMouseState =
+      (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS);
+
+  if (currentLeftClickMouseState && !lastLeftClickMouseState) {
+    if (!firstLineClick) {
+      startX = cellX;
+      startY = cellY;
+      firstLineClick = true;
 
       plotCell(startX, startY, 255, 0, 0);
 
@@ -233,11 +259,12 @@ void processInput(GLFWwindow *window) {
       endX = cellX;
       endY = cellY;
       drawLine(startX, startY, endX, endY, 255, 0, 0);
-      firstClick = false;
+      firstLineClick = false;
+
       std::cout << "Line drawn till tile: (" << endX << ", " << endY << ")\n";
     }
   }
-  lastMouseState = currentMouseState;
+  lastLeftClickMouseState = currentLeftClickMouseState;
 }
 
 void handleCanvasResize(int width, int height) {
