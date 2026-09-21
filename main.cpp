@@ -2,6 +2,11 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
+// imgui
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
+
 // clang-format on
 #include <cmath>
 #include <iostream>
@@ -91,6 +96,18 @@ int main() {
   glfwMakeContextCurrent(window);
   glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
+  // imgui context
+  // --------------------
+  IMGUI_CHECKVERSION();
+  ImGui::CreateContext();
+  ImGuiIO &io = ImGui::GetIO();
+  io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+  // Setup Platform/Renderer backends
+  ImGui_ImplGlfw_InitForOpenGL(
+      window, true); // Second param install_callback=true will install GLFW
+                     // callbacks and chain to existing ones.
+  ImGui_ImplOpenGL3_Init();
+
   // glad: load all OpenGL function pointers
   // ---------------------------------------
   if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
@@ -164,6 +181,11 @@ int main() {
   // RENDER LOOP
   // -----------
   while (!glfwWindowShouldClose(window)) {
+    // we start a demo imgui window
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+    ImGui::ShowDemoWindow(); // Show demo window! :)
     // input
     processInput(window);
 
@@ -177,11 +199,16 @@ int main() {
     glBindVertexArray(VAO);
     glDrawArrays(GL_TRIANGLES, 0, 6);
 
+    ImGui::Render();
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
     // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved
     // etc.)
     glfwSwapBuffers(window);
     glfwPollEvents();
   }
+  ImGui_ImplOpenGL3_Shutdown();
+  ImGui_ImplGlfw_Shutdown();
+  ImGui::DestroyContext();
 
   glDeleteVertexArrays(1, &VAO);
   glDeleteBuffers(1, &VBO);
@@ -225,14 +252,15 @@ void processInput(GLFWwindow *window) {
       startY = cellY;
       firstCircleClick = true;
 
-      plotCell(startX, startY, 0, 0 ,0);
+      plotCell(startX, startY, 0, 0, 0);
 
       std::cout << "Initial point: (" << startX << ", " << startY << ")\n";
     } else {
       endX = cellX;
       endY = cellY;
       // Parse and calculation of the radius
-      int radius = (int)(sqrt(((endX-startX)*(endX-startX))+((endY-startY)*(endY-startY))));
+      int radius = (int)(sqrt(((endX - startX) * (endX - startX)) +
+                              ((endY - startY) * (endY - startY))));
       bresCircle(startX, startY, radius);
       firstCircleClick = false;
 
