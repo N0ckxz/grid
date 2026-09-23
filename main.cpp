@@ -36,6 +36,7 @@ void plotCell(int cellX, int cellY, unsigned char r, unsigned char g,
               unsigned char b);
 void drawCircle(int xc, int yc, int x, int y);
 void bresCircle(int xc, int yc, int r);
+void bresElipse(int xc, int yc, int r1, int r2);
 
 // settings
 const unsigned int SCR_WIDTH = 300;
@@ -224,6 +225,9 @@ int main() {
 void processInput(GLFWwindow *window) {
   if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
     glfwSetWindowShouldClose(window, true);
+  }
+  // Press the letter O to draw elipse
+  if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) {
   }
 
   // CURSOR POSITION IN GRID LOGIC
@@ -456,6 +460,7 @@ void plotCell(int cellX, int cellY, unsigned char r, unsigned char g,
 }
 
 // first drawCircle implementation, not gonna work tho
+// it did work, each one of these are quadrants of the circle
 void drawCircle(int xc, int yc, int x, int y) {
   plotCell(xc + x, yc + y, 255, 0, 0);
   plotCell(xc - x, yc + y, 255, 0, 0);
@@ -483,3 +488,10 @@ void bresCircle(int xc, int yc, int r) {
     drawCircle(xc, yc, x, y);
   }
 }
+
+// void bresElipse(int xc, int yc, int r1, int r2) {
+//   int x = 0, y = r1;
+//   int d = 3 - (2 * r1);
+//
+//   drawCircle(xc, yc, x, y);
+// }
