@@ -18,16 +18,17 @@ void handleCanvasResize(int width,
                                      // just use width and height
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void processInput(GLFWwindow *window);
-void drawLine(int x0, int y0, int x1, int y1, ImVec4 color);
-void plotLineLow(int x0, int y0, int x1, int y1, ImVec4 color);
-void plotLineHigh(int x0, int y0, int x1, int y1, ImVec4 color);
+ImVec4 getColor(int x, int y);
 void plot(int x, int y);
 void plot(int x, int y, ImVec4 color);
 void plotCell(int cellX, int cellY);
 void plotCell(int cellX, int cellY, ImVec4 color);
-void drawCircle(int xc, int yc, int x, int y);
+void plotLineLow(int x0, int y0, int x1, int y1, ImVec4 color);
+void plotLineHigh(int x0, int y0, int x1, int y1, ImVec4 color);
+void drawLine(int x0, int y0, int x1, int y1, ImVec4 color);
 void bresCircle(int xc, int yc, int r);
 void bresElipse(int xc, int yc, int r1, int r2);
+void drawCircle(int xc, int yc, int x, int y);
 void drawRectangle(int x0, int y0, int x1, int y1, ImVec4 color);
 void mainMenuBar();
 
@@ -61,8 +62,8 @@ static ImVec4 color =
     ImVec4(0.0f / 255.0f, 0.0f / 255.0f, 0.0f / 255.0f, 255.0f / 255.0f);
 
 // Button variables
-bool freeDrawing = false;
-bool line = true;
+bool freeDrawing = true;
+bool line = false;
 bool circle = false;
 bool rectangle = false;
 bool fill = false;
@@ -226,7 +227,7 @@ int main() {
     }
     ImGui::SameLine();
     if (ImGui::Button("Line")) {
-      freeDrawing = true;
+      freeDrawing = false;
       line = true;
       circle = false;
       rectangle = false;
@@ -234,7 +235,7 @@ int main() {
     }
     ImGui::SameLine();
     if (ImGui::Button("Circle")) {
-      freeDrawing = true;
+      freeDrawing = false;
       line = false;
       circle = true;
       rectangle = false;
@@ -242,7 +243,7 @@ int main() {
     }
     ImGui::SameLine();
     if (ImGui::Button("Rectangle")) {
-      freeDrawing = true;
+      freeDrawing = false;
       line = false;
       circle = false;
       rectangle = true;
@@ -250,7 +251,7 @@ int main() {
     }
     ImGui::SameLine();
     if (ImGui::Button("Fill")) {
-      freeDrawing = true;
+      freeDrawing = false;
       line = false;
       circle = false;
       rectangle = false;
@@ -336,11 +337,22 @@ void processInput(GLFWwindow *window)
         (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS);
 
     if (freeDrawing == true) {
-      if (currentLeftClickMouseState && !lastLeftClickMouseState) {
-        startX = cellX;
-        startY = cellY;
-        plotCell(startX, startY, color);
+      // FREE DRAWING INPUT AND LOGIC (doesnt require a function)
+      static int lastX = 0;
+      static int lastY = 0;
+
+      if (currentLeftClickMouseState) {
+        if (!lastLeftClickMouseState) {
+          lastX = cellX;
+          lastY = cellY;
+          plotCell(lastX, lastY, color);
+        } else {
+          drawLine(lastX, lastY, cellX, cellY, color);
+          lastX = cellX;
+          lastY = cellY;
+        }
       }
+      lastLeftClickMouseState = currentLeftClickMouseState;
 
     } else if (line == true) {
       // LINE DRAWING INPUT
@@ -432,14 +444,15 @@ void handleCanvasResize(int width, int height) {
       int cellX = x / CELL_SIZE;
       int cellY = y / CELL_SIZE;
 
+      // Checkerboard texture, unused now, fill doesnt work with this on
       if ((cellX + cellY) % 2 == 0) {
         canvasData[index + 0] = 250;
         canvasData[index + 1] = 250;
         canvasData[index + 2] = 250;
       } else {
-        canvasData[index + 0] = 230;
-        canvasData[index + 1] = 230;
-        canvasData[index + 2] = 230;
+        canvasData[index + 0] = 250;
+        canvasData[index + 1] = 250;
+        canvasData[index + 2] = 250;
       }
     }
   }
@@ -538,6 +551,19 @@ void plotLineHigh(int x0, int y0, int x1, int y1, ImVec4 color) {
       D += 2 * dx;
     }
   }
+}
+
+ImVec4 getColor(int x, int y)
+{
+  // Same logic as plot function
+  int flippedY = (canvasHeight - 1) - y;
+  int index = (flippedY * canvasWidth + x) * 3;
+
+  float r = canvasData[index + 0] / 255.0f;
+  float g = canvasData[index + 1] / 255.0f;
+  float b = canvasData[index + 2] / 255.0f;
+
+  return ImVec4(r, g, b, 1.0f);
 }
 
 void plot(int x, int y) {
