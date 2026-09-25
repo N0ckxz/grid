@@ -52,8 +52,9 @@ int endX = 0;
 bool firstLineClick = false;
 bool firstCircleClick = false;
 
-//Color variable
-static ImVec4 color = ImVec4(114.0f / 255.0f, 144.0f / 255.0f, 154.0f / 255.0f, 200.0f / 255.0f);
+// Color variable
+static ImVec4 color =
+    ImVec4(114.0f / 255.0f, 144.0f / 255.0f, 154.0f / 255.0f, 200.0f / 255.0f);
 // Button variables
 bool line = true;
 bool circle = false;
@@ -157,7 +158,7 @@ int main() {
   };
 
   //---------------------------------------
-  //TEXTURES, VBO AND VAO
+  // TEXTURES, VBO AND VAO
   //---------------------------------------
   GLuint VAO, VBO;
   glGenVertexArrays(1, &VAO);
@@ -198,37 +199,55 @@ int main() {
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
-    //ImGui::ShowDemoWindow(); // Show demo window! :)
-    //mainMenuBar();
+    // ImGui::ShowDemoWindow(); // Show demo window! :)
+    // mainMenuBar();
 
     //---------------------------------------
     // My ImGUI window!!
     //---------------------------------------
-    ImGui::SetNextWindowSize(ImVec2(canvasWidth, canvasHeight*0.12));
-    ImGui::SetNextWindowPos(ImVec2(0,0));
-    ImGui::Begin("Paintlike UI", NULL, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
+    ImGui::SetNextWindowSize(ImVec2(canvasWidth, canvasHeight * 0.12));
+    ImGui::SetNextWindowPos(ImVec2(0, 0));
+    ImGui::Begin("Paintlike UI", NULL,
+                 ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar |
+                     ImGuiWindowFlags_NoResize);
     ImGui::Text("Color Picker and shapes v1");
 
     if (ImGui::Button("Line")) {
-
+      line = true;
+      circle = false;
+      square = false;
+      fill = false;
     }
     ImGui::SameLine();
     if (ImGui::Button("Circle")) {
-
+      line = false;
+      circle = true;
+      square = false;
+      fill = false;
     }
     ImGui::SameLine();
     if (ImGui::Button("Square")) {
-
+      line = false;
+      circle = false;
+      square = true;
+      fill = false;
     }
     ImGui::SameLine();
     if (ImGui::Button("Fill")) {
-
+      line = false;
+      circle = false;
+      square = false;
+      fill = true;
     }
 
     float w = (ImGui::GetContentRegionAvail().y);
-    //ImGui::ColorPicker3("Select your color!!!", (float*)&color, ImGuiColorEditFlags_DisplayRGB | ImGuiColorEditFlags_NoAlpha);
+    // ImGui::ColorPicker3("Select your color!!!", (float*)&color,
+    // ImGuiColorEditFlags_DisplayRGB | ImGuiColorEditFlags_NoAlpha);
     ImGui::SetNextItemWidth(w);
-    ImGui::ColorPicker3("##MyColor##6", (float*)&color, ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_NoSidePreview | ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoAlpha);
+    ImGui::ColorPicker3(
+        "##MyColor##6", (float *)&color,
+        ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_NoSidePreview |
+            ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoAlpha);
 
     ImGui::End();
     // input
@@ -295,11 +314,34 @@ void processInput(GLFWwindow *window) {
 
   } else {
     // CURSOR POSITION IN GRID LOGIC
-    bool currentRightClickMouseState =
-        (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS);
+    bool currentLeftClickMouseState =
+        (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS);
 
-    // CIRCLE DRAWING ALGORITHM
-    if (currentRightClickMouseState && !lastRightClickMouseState) {
+    if (line == true) {
+      // LINE DRAWING ALGORITHM
+      if (currentLeftClickMouseState && !lastLeftClickMouseState) {
+        if (!firstLineClick) {
+          startX = cellX;
+          startY = cellY;
+          firstLineClick = true;
+
+          plotCell(startX, startY, 255, 0, 0);
+
+          std::cout << "Initial tile: (" << startX << ", " << startY << ")\n";
+        } else {
+          endX = cellX;
+          endY = cellY;
+          drawLine(startX, startY, endX, endY, 255, 0, 0);
+          firstLineClick = false;
+
+          std::cout << "Line drawn till tile: (" << endX << ", " << endY
+                    << ")\n";
+        }
+      }
+      lastLeftClickMouseState = currentLeftClickMouseState;
+
+    } else if (circle == true) {
+      // CIRCLE DRAWING ALGORITHM
       if (!firstCircleClick) {
         startX = cellX;
         startY = cellY;
@@ -318,30 +360,6 @@ void processInput(GLFWwindow *window) {
         firstCircleClick = false;
 
         std::cout << "Circle drawn in: (" << endX << ", " << endY << ")\n";
-      }
-    }
-    lastRightClickMouseState = currentRightClickMouseState;
-
-    // LINE DRAWING ALGORITHM
-    bool currentLeftClickMouseState =
-        (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS);
-
-    if (currentLeftClickMouseState && !lastLeftClickMouseState) {
-      if (!firstLineClick) {
-        startX = cellX;
-        startY = cellY;
-        firstLineClick = true;
-
-        plotCell(startX, startY, 255, 0, 0);
-
-        std::cout << "Initial tile: (" << startX << ", " << startY << ")\n";
-      } else {
-        endX = cellX;
-        endY = cellY;
-        drawLine(startX, startY, endX, endY, 255, 0, 0);
-        firstLineClick = false;
-
-        std::cout << "Line drawn till tile: (" << endX << ", " << endY << ")\n";
       }
     }
     lastLeftClickMouseState = currentLeftClickMouseState;
@@ -543,19 +561,19 @@ void bresElipse(int xc, int yc, int r1, int r2) {
   drawCircle(xc, yc, x, y);
 }
 
-void mainMenuBar()
-{
+void mainMenuBar() {
   if (ImGui::BeginMainMenuBar()) // Opens the global horizontal bar
   {
-    if (ImGui::BeginMenu("File"))
-    {
-      if (ImGui::MenuItem("New", "Ctrl+N")) { /* Handle action */ }
-      if (ImGui::MenuItem("Open", "Ctrl+O")) { /* Handle action */ }
+    if (ImGui::BeginMenu("File")) {
+      if (ImGui::MenuItem("New", "Ctrl+N")) { /* Handle action */
+      }
+      if (ImGui::MenuItem("Open", "Ctrl+O")) { /* Handle action */
+      }
       ImGui::EndMenu();
     }
-    if (ImGui::BeginMenu("Edit"))
-    {
-      if (ImGui::MenuItem("Undo", "Ctrl+Z")) { /* Handle action */ }
+    if (ImGui::BeginMenu("Edit")) {
+      if (ImGui::MenuItem("Undo", "Ctrl+Z")) { /* Handle action */
+      }
       ImGui::EndMenu();
     }
     ImGui::EndMainMenuBar(); // Closes the global horizontal bar
