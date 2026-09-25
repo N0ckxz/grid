@@ -335,7 +335,14 @@ void processInput(GLFWwindow *window)
     bool currentLeftClickMouseState =
         (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS);
 
-    if (line == true) {
+    if (freeDrawing == true) {
+      if (currentLeftClickMouseState && !lastLeftClickMouseState) {
+        startX = cellX;
+        startY = cellY;
+        plotCell(startX, startY, color);
+      }
+
+    } else if (line == true) {
       // LINE DRAWING INPUT
       if (currentLeftClickMouseState && !lastLeftClickMouseState) {
         if (!firstLeftClick) {
