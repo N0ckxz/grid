@@ -108,6 +108,7 @@ int main() {
       window, true); // Second param install_callback=true will install GLFW
                      // callbacks and chain to existing ones.
   ImGui_ImplOpenGL3_Init();
+  bool open = true;
 
   // glad: load all OpenGL function pointers
   // ---------------------------------------
@@ -146,7 +147,9 @@ int main() {
       1.0f,  1.0f,  1.0f, 1.0f  // Top-Right
   };
 
-  // IMPORTANT: I dont understand any of this still, I should ask about it
+  //---------------------------------------
+  //TEXTURES, VBO AND VAO
+  //---------------------------------------
   GLuint VAO, VBO;
   glGenVertexArrays(1, &VAO);
   glGenBuffers(1, &VBO);
@@ -186,7 +189,27 @@ int main() {
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
-    ImGui::ShowDemoWindow(); // Show demo window! :)
+    //ImGui::ShowDemoWindow(); // Show demo window! :)
+
+    //---------------------------------------
+    // My ImGUI window!!
+    //---------------------------------------
+    ImGui::SetNextWindowSize(ImVec2(canvasWidth, canvasHeight*0.12));
+    ImGui::SetNextWindowPos(ImVec2(0,0));
+    ImGui::Begin("Paintlike UI", NULL, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar);
+    ImGui::Text("Color Picker and shapes v1");
+
+    if (ImGui::Button("Square")) {
+
+    }
+
+    static ImVec4 color = ImVec4(114.0f / 255.0f, 144.0f / 255.0f, 154.0f / 255.0f, 200.0f / 255.0f);
+    float w = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.y) * 0.10f;
+    //ImGui::ColorPicker3("Select your color!!!", (float*)&color, ImGuiColorEditFlags_DisplayRGB | ImGuiColorEditFlags_NoAlpha);
+    ImGui::SetNextItemWidth(w);
+    ImGui::ColorPicker3("##MyColor##6", (float*)&color, ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_NoSidePreview | ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoAlpha);
+
+    ImGui::End();
     // input
     processInput(window);
 
