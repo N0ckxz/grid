@@ -12,6 +12,27 @@
 #include <iostream>
 #include <vector>
 
+// initializing functions
+void handleCanvasResize(int width,
+                        int height); // since textureID is global now, we can
+                                     // just use width and height
+void framebuffer_size_callback(GLFWwindow *window, int width, int height);
+void processInput(GLFWwindow *window);
+void drawLine(int x0, int y0, int x1, int y1, ImVec4 color);
+void plotLineLow(int x0, int y0, int x1, int y1, ImVec4 color);
+void plotLineHigh(int x0, int y0, int x1, int y1, ImVec4 color);
+void plot(int x, int y);
+void plot(int x, int y, ImVec4 color);
+void plotCell(int cellX, int cellY);
+void plotCell(int cellX, int cellY, ImVec4 color);
+void drawCircle(int xc, int yc, int x, int y);
+void bresCircle(int xc, int yc, int r);
+void bresElipse(int xc, int yc, int r1, int r2);
+void mainMenuBar();
+
+//---------------------------------------------
+// GLOBAL VARIABLES
+//---------------------------------------------
 std::vector<unsigned char> canvasData;
 GLuint textureID;
 
@@ -19,44 +40,25 @@ GLuint textureID;
 int canvasWidth = 300;
 int canvasHeight = 300;
 
-// initializing functions
-void handleCanvasResize(int width,
-                        int height); // since textureID is global now, we can
-                                     // just use width and height
-void framebuffer_size_callback(GLFWwindow *window, int width, int height);
-void processInput(GLFWwindow *window);
-void drawLine(int x0, int y0, int x1, int y1, unsigned char r, unsigned char g,
-              unsigned char b);
-void plotLineLow(int x0, int y0, int x1, int y1, unsigned char r,
-                 unsigned char g, unsigned char b);
-void plotLineHigh(int x0, int y0, int x1, int y1, unsigned char r,
-                  unsigned char g, unsigned char b);
-void plot(int x, int y);
-void plot(int x, int y, unsigned char r, unsigned char g, unsigned char b);
-void plotCell(int cellX, int cellY, unsigned char r, unsigned char g,
-              unsigned char b);
-void plotCell(int cellX, int cellY);
-void drawCircle(int xc, int yc, int x, int y);
-void bresCircle(int xc, int yc, int r);
-void bresElipse(int xc, int yc, int r1, int r2);
-void mainMenuBar();
-
 // settings
 const unsigned int SCR_WIDTH = 300;
 const unsigned int SCR_HEIGHT = 300;
 const int CELL_SIZE = 10; // Size of every block in the grid
 
+//MOUSE COORDINATES FOR DRAWING LOGIC
 int startY = 0;
 int startX = 0;
 int endY = 0;
 int endX = 0;
 
-bool firstLineClick = false;
-bool firstCircleClick = false;
+//Left and Right click variables, currently only using left click
+bool firstLeftClick = false;
+bool firstRightClick = false;
 
 // Color variable
 static ImVec4 color =
-    ImVec4(114.0f / 255.0f, 144.0f / 255.0f, 154.0f / 255.0f, 200.0f / 255.0f);
+    ImVec4(0.0f / 255.0f, 0.0f / 255.0f, 0.0f / 255.0f, 255.0f / 255.0f);
+
 // Button variables
 bool line = true;
 bool circle = false;
@@ -64,7 +66,6 @@ bool square = false;
 bool fill = false;
 
 // Shaders
-// I dont understand how this works, some day though
 const char *vertexShaderSource = "#version 460 core\n"
                                  "layout (location = 0) in vec2 aPos;\n"
                                  "layout (location = 1) in vec2 aTexCoord;\n"
@@ -309,7 +310,7 @@ void processInput(GLFWwindow *window) {
   int cellX = pixelX / CELL_SIZE;
   int cellY = pixelY / CELL_SIZE;
 
-  static bool lastRightClickMouseState = false;
+  //static bool lastRightClickMouseState = false;
   static bool lastLeftClickMouseState = false;
 
   if (ImGui::GetIO().WantCaptureMouse == true) {
@@ -322,19 +323,19 @@ void processInput(GLFWwindow *window) {
     if (line == true) {
       // LINE DRAWING INPUT
       if (currentLeftClickMouseState && !lastLeftClickMouseState) {
-        if (!firstLineClick) {
+        if (!firstLeftClick) {
           startX = cellX;
           startY = cellY;
-          firstLineClick = true;
+          firstLeftClick = true;
 
-          plotCell(startX, startY, 255, 0, 0);
+          plotCell(startX, startY, color);
 
           std::cout << "Initial tile: (" << startX << ", " << startY << ")\n";
         } else {
           endX = cellX;
           endY = cellY;
-          drawLine(startX, startY, endX, endY, 255, 0, 0);
-          firstLineClick = false;
+          drawLine(startX, startY, endX, endY, color);
+          firstLeftClick = false;
 
           std::cout << "Line drawn till tile: (" << endX << ", " << endY
                     << ")\n";
@@ -345,10 +346,10 @@ void processInput(GLFWwindow *window) {
     } else if (circle == true) {
       // CIRCLE DRAWING INPUT
       if (currentLeftClickMouseState && !lastLeftClickMouseState) {
-        if (!firstCircleClick) {
+        if (!firstLeftClick) {
           startX = cellX;
           startY = cellY;
-          firstCircleClick = true;
+          firstLeftClick = true;
 
           plotCell(startX, startY);
 
@@ -360,7 +361,7 @@ void processInput(GLFWwindow *window) {
           int radius = (int)(sqrt(((endX - startX) * (endX - startX)) +
                                   ((endY - startY) * (endY - startY))));
           bresCircle(startX, startY, radius);
-          firstCircleClick = false;
+          firstLeftClick = false;
 
           std::cout << "Circle drawn in: (" << endX << ", " << endY << ")\n";
         }
@@ -417,32 +418,30 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
 }
 
 // sadly, made with AI, ran out of time
-void drawLine(int x0, int y0, int x1, int y1, unsigned char r, unsigned char g,
-              unsigned char b) {
+void drawLine(int x0, int y0, int x1, int y1, ImVec4 color) {
   // Check if the line is horizontal-leaning (|slope| <= 1) or vertical-leaning
   // (|slope| > 1)
   if (abs(y1 - y0) < abs(x1 - x0)) {
     // Low slope: step along X
     // Ensure we always draw from left to right (x0 <= x1)
     if (x0 > x1) {
-      plotLineLow(x1, y1, x0, y0, r, g, b);
+      plotLineLow(x1, y1, x0, y0, color);
     } else {
-      plotLineLow(x0, y0, x1, y1, r, g, b);
+      plotLineLow(x0, y0, x1, y1, color);
     }
   } else {
     // High slope: step along Y
     // Ensure we always draw from bottom to top (y0 <= y1)
     if (y0 > y1) {
-      plotLineHigh(x1, y1, x0, y0, r, g, b);
+      plotLineHigh(x1, y1, x0, y0, color);
     } else {
-      plotLineHigh(x0, y0, x1, y1, r, g, b);
+      plotLineHigh(x0, y0, x1, y1, color);
     }
   }
 }
 
 // function for plotting in the lower parts of the octant
-void plotLineLow(int x0, int y0, int x1, int y1, unsigned char r,
-                 unsigned char g, unsigned char b) {
+void plotLineLow(int x0, int y0, int x1, int y1, ImVec4 color) {
   int dx = x1 - x0;
   int dy = y1 - y0;
   int yi = 1;
@@ -458,7 +457,7 @@ void plotLineLow(int x0, int y0, int x1, int y1, unsigned char r,
 
   // drive the loop along the y axis
   for (int x = x0; x <= x1; x++) {
-    plotCell(x, y, r, g, b);
+    plotCell(x, y, color);
 
     if (D > 0) {
       y += yi;
@@ -469,8 +468,7 @@ void plotLineLow(int x0, int y0, int x1, int y1, unsigned char r,
   }
 }
 
-void plotLineHigh(int x0, int y0, int x1, int y1, unsigned char r,
-                  unsigned char g, unsigned char b) {
+void plotLineHigh(int x0, int y0, int x1, int y1, ImVec4 color) {
   int dx = x1 - x0;
   int dy = y1 - y0;
   int xi = 1;
@@ -486,7 +484,7 @@ void plotLineHigh(int x0, int y0, int x1, int y1, unsigned char r,
 
   // drive the loop along the x axis
   for (int y = y0; y <= y1; y++) {
-    plotCell(x, y, r, g, b);
+    plotCell(x, y, color);
 
     if (D > 0) {
       x += xi;
@@ -507,7 +505,7 @@ void plot(int x, int y) {
   int index = (flippedY * canvasWidth + x) * 3;
 }
 
-void plot(int x, int y, unsigned char r, unsigned char g, unsigned char b) {
+void plot(int x, int y, ImVec4 color) {
   // check how the bounds are against the current resolution
   if (x < 0 || x >= canvasWidth || y < 0 || y >= canvasHeight)
     return;
@@ -517,14 +515,13 @@ void plot(int x, int y, unsigned char r, unsigned char g, unsigned char b) {
   int index = (flippedY * canvasWidth + x) * 3;
 
   // Updating the global canvas vector
-  canvasData[index + 0] = r;
-  canvasData[index + 1] = g;
-  canvasData[index + 2] = b;
+  canvasData[index + 0] = (unsigned char)(color.x * 255.0f);
+  canvasData[index + 1] = (unsigned char)(color.y * 255.0f);
+  canvasData[index + 2] = (unsigned char)(color.z * 255.0f);
 }
 
 // Gets the coordinates of a BLOCK, not a pixel (like the last time)
-void plotCell(int cellX, int cellY, unsigned char r, unsigned char g,
-              unsigned char b) {
+void plotCell(int cellX, int cellY, ImVec4 color) {
   int startPixelX = cellX * CELL_SIZE;
   int startPixelY = cellY * CELL_SIZE;
 
@@ -534,7 +531,7 @@ void plotCell(int cellX, int cellY, unsigned char r, unsigned char g,
       int currentPixelX = startPixelX + x;
       int currentPixelY = startPixelY + y;
 
-      plot(currentPixelX, currentPixelY, r, g, b);
+      plot(currentPixelX, currentPixelY, color);
     }
   }
 }
@@ -556,14 +553,14 @@ void plotCell(int cellX, int cellY) {
 // first drawCircle implementation, not gonna work tho
 // it did work, each one of these are quadrants of the circle
 void drawCircle(int xc, int yc, int x, int y) {
-  plotCell(xc + x, yc + y, 255, 0, 0);
-  plotCell(xc - x, yc + y, 255, 0, 0);
-  plotCell(xc - x, yc - y, 255, 0, 0);
-  plotCell(xc + x, yc - y, 255, 0, 0);
-  plotCell(xc + y, yc + x, 255, 0, 0);
-  plotCell(xc - y, yc + x, 255, 0, 0);
-  plotCell(xc - y, yc - x, 255, 0, 0);
-  plotCell(xc + y, yc - x, 255, 0, 0);
+  plotCell(xc + x, yc + y, color);
+  plotCell(xc - x, yc + y, color);
+  plotCell(xc - x, yc - y, color);
+  plotCell(xc + x, yc - y, color);
+  plotCell(xc + y, yc + x, color);
+  plotCell(xc - y, yc + x, color);
+  plotCell(xc - y, yc - x, color);
+  plotCell(xc + y, yc - x, color);
 }
 
 void bresCircle(int xc, int yc, int r) {
