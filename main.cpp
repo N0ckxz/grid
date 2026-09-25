@@ -426,7 +426,6 @@ void plotLineHigh(int x0, int y0, int x1, int y1, unsigned char r,
   }
 }
 
-// with a little AI help*
 void plot(int x, int y, unsigned char r, unsigned char g, unsigned char b) {
   // check how the bounds are against the current resolution
   if (x < 0 || x >= canvasWidth || y < 0 || y >= canvasHeight)
@@ -489,9 +488,8 @@ void bresCircle(int xc, int yc, int r) {
   }
 }
 
-// void bresElipse(int xc, int yc, int r1, int r2) {
-//   int x = 0, y = r1;
-//   int d = 3 - (2 * r1);
-//
-//   drawCircle(xc, yc, x, y);
-// }
+void bresElipse(int xc, int yc, int r1, int r2) {
+  int x = 0, y = r1;
+  int d = 3 - (2 * r1);
+  drawCircle(xc, yc, x, y);
+}
