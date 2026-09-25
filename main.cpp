@@ -31,9 +31,11 @@ void plotLineLow(int x0, int y0, int x1, int y1, unsigned char r,
                  unsigned char g, unsigned char b);
 void plotLineHigh(int x0, int y0, int x1, int y1, unsigned char r,
                   unsigned char g, unsigned char b);
+void plot(int x, int y);
 void plot(int x, int y, unsigned char r, unsigned char g, unsigned char b);
 void plotCell(int cellX, int cellY, unsigned char r, unsigned char g,
               unsigned char b);
+void plotCell(int cellX, int cellY);
 void drawCircle(int xc, int yc, int x, int y);
 void bresCircle(int xc, int yc, int r);
 void bresElipse(int xc, int yc, int r1, int r2);
@@ -318,7 +320,7 @@ void processInput(GLFWwindow *window) {
         (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS);
 
     if (line == true) {
-      // LINE DRAWING ALGORITHM
+      // LINE DRAWING INPUT
       if (currentLeftClickMouseState && !lastLeftClickMouseState) {
         if (!firstLineClick) {
           startX = cellX;
@@ -341,28 +343,30 @@ void processInput(GLFWwindow *window) {
       lastLeftClickMouseState = currentLeftClickMouseState;
 
     } else if (circle == true) {
-      // CIRCLE DRAWING ALGORITHM
-      if (!firstCircleClick) {
-        startX = cellX;
-        startY = cellY;
-        firstCircleClick = true;
+      // CIRCLE DRAWING INPUT
+      if (currentLeftClickMouseState && !lastLeftClickMouseState) {
+        if (!firstCircleClick) {
+          startX = cellX;
+          startY = cellY;
+          firstCircleClick = true;
 
-        plotCell(startX, startY, 0, 0, 0);
+          plotCell(startX, startY);
 
-        std::cout << "Initial point: (" << startX << ", " << startY << ")\n";
-      } else {
-        endX = cellX;
-        endY = cellY;
-        // Parse and calculation of the radius
-        int radius = (int)(sqrt(((endX - startX) * (endX - startX)) +
-                                ((endY - startY) * (endY - startY))));
-        bresCircle(startX, startY, radius);
-        firstCircleClick = false;
+          std::cout << "Initial point: (" << startX << ", " << startY << ")\n";
+        } else {
+          endX = cellX;
+          endY = cellY;
+          // Parse and calculation of the radius
+          int radius = (int)(sqrt(((endX - startX) * (endX - startX)) +
+                                  ((endY - startY) * (endY - startY))));
+          bresCircle(startX, startY, radius);
+          firstCircleClick = false;
 
-        std::cout << "Circle drawn in: (" << endX << ", " << endY << ")\n";
+          std::cout << "Circle drawn in: (" << endX << ", " << endY << ")\n";
+        }
       }
+      lastLeftClickMouseState = currentLeftClickMouseState;
     }
-    lastLeftClickMouseState = currentLeftClickMouseState;
   }
 }
 
@@ -493,6 +497,16 @@ void plotLineHigh(int x0, int y0, int x1, int y1, unsigned char r,
   }
 }
 
+void plot(int x, int y) {
+  // check how the bounds are against the current resolution
+  if (x < 0 || x >= canvasWidth || y < 0 || y >= canvasHeight)
+    return;
+
+  // Calculating the offset for 3 channels
+  int flippedY = (canvasHeight - 1) - y;
+  int index = (flippedY * canvasWidth + x) * 3;
+}
+
 void plot(int x, int y, unsigned char r, unsigned char g, unsigned char b) {
   // check how the bounds are against the current resolution
   if (x < 0 || x >= canvasWidth || y < 0 || y >= canvasHeight)
@@ -525,6 +539,20 @@ void plotCell(int cellX, int cellY, unsigned char r, unsigned char g,
   }
 }
 
+void plotCell(int cellX, int cellY) {
+  int startPixelX = cellX * CELL_SIZE;
+  int startPixelY = cellY * CELL_SIZE;
+
+  // filling the block with CELL_SIZE x CELL_SIZE
+  for (int y = 0; y < CELL_SIZE; y++) {
+    for (int x = 0; x < CELL_SIZE; x++) {
+      int currentPixelX = startPixelX + x;
+      int currentPixelY = startPixelY + y;
+
+      plot(currentPixelX, currentPixelY);
+    }
+  }
+}
 // first drawCircle implementation, not gonna work tho
 // it did work, each one of these are quadrants of the circle
 void drawCircle(int xc, int yc, int x, int y) {
