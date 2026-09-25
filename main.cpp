@@ -37,6 +37,7 @@ void plotCell(int cellX, int cellY, unsigned char r, unsigned char g,
 void drawCircle(int xc, int yc, int x, int y);
 void bresCircle(int xc, int yc, int r);
 void bresElipse(int xc, int yc, int r1, int r2);
+void mainMenuBar();
 
 // settings
 const unsigned int SCR_WIDTH = 300;
@@ -50,6 +51,14 @@ int endX = 0;
 
 bool firstLineClick = false;
 bool firstCircleClick = false;
+
+//Color variable
+static ImVec4 color = ImVec4(114.0f / 255.0f, 144.0f / 255.0f, 154.0f / 255.0f, 200.0f / 255.0f);
+// Button variables
+bool line = true;
+bool circle = false;
+bool square = false;
+bool fill = false;
 
 // Shaders
 // I dont understand how this works, some day though
@@ -190,21 +199,33 @@ int main() {
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
     //ImGui::ShowDemoWindow(); // Show demo window! :)
+    //mainMenuBar();
 
     //---------------------------------------
     // My ImGUI window!!
     //---------------------------------------
     ImGui::SetNextWindowSize(ImVec2(canvasWidth, canvasHeight*0.12));
     ImGui::SetNextWindowPos(ImVec2(0,0));
-    ImGui::Begin("Paintlike UI", NULL, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar);
+    ImGui::Begin("Paintlike UI", NULL, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
     ImGui::Text("Color Picker and shapes v1");
 
+    if (ImGui::Button("Line")) {
+
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Circle")) {
+
+    }
+    ImGui::SameLine();
     if (ImGui::Button("Square")) {
 
     }
+    ImGui::SameLine();
+    if (ImGui::Button("Fill")) {
 
-    static ImVec4 color = ImVec4(114.0f / 255.0f, 144.0f / 255.0f, 154.0f / 255.0f, 200.0f / 255.0f);
-    float w = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.y) * 0.10f;
+    }
+
+    float w = (ImGui::GetContentRegionAvail().y);
     //ImGui::ColorPicker3("Select your color!!!", (float*)&color, ImGuiColorEditFlags_DisplayRGB | ImGuiColorEditFlags_NoAlpha);
     ImGui::SetNextItemWidth(w);
     ImGui::ColorPicker3("##MyColor##6", (float*)&color, ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_NoSidePreview | ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoAlpha);
@@ -253,7 +274,6 @@ void processInput(GLFWwindow *window) {
   if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) {
   }
 
-  // CURSOR POSITION IN GRID LOGIC
   double dXpos, dYpos;
   glfwGetCursorPos(window, &dXpos, &dYpos);
   // int xpos = (int)dXpos;
@@ -268,58 +288,64 @@ void processInput(GLFWwindow *window) {
   int cellX = pixelX / CELL_SIZE;
   int cellY = pixelY / CELL_SIZE;
 
-  // CIRCLE DRAWING ALGORITHM
   static bool lastRightClickMouseState = false;
-  bool currentRightClickMouseState =
-      (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS);
-
-  if (currentRightClickMouseState && !lastRightClickMouseState) {
-    if (!firstCircleClick) {
-      startX = cellX;
-      startY = cellY;
-      firstCircleClick = true;
-
-      plotCell(startX, startY, 0, 0, 0);
-
-      std::cout << "Initial point: (" << startX << ", " << startY << ")\n";
-    } else {
-      endX = cellX;
-      endY = cellY;
-      // Parse and calculation of the radius
-      int radius = (int)(sqrt(((endX - startX) * (endX - startX)) +
-                              ((endY - startY) * (endY - startY))));
-      bresCircle(startX, startY, radius);
-      firstCircleClick = false;
-
-      std::cout << "Circle drawn in: (" << endX << ", " << endY << ")\n";
-    }
-  }
-  lastRightClickMouseState = currentRightClickMouseState;
-
-  // LINE DRAWING ALGORITHM
   static bool lastLeftClickMouseState = false;
-  bool currentLeftClickMouseState =
-      (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS);
 
-  if (currentLeftClickMouseState && !lastLeftClickMouseState) {
-    if (!firstLineClick) {
-      startX = cellX;
-      startY = cellY;
-      firstLineClick = true;
+  if (ImGui::GetIO().WantCaptureMouse == true) {
 
-      plotCell(startX, startY, 255, 0, 0);
+  } else {
+    // CURSOR POSITION IN GRID LOGIC
+    bool currentRightClickMouseState =
+        (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS);
 
-      std::cout << "Initial tile: (" << startX << ", " << startY << ")\n";
-    } else {
-      endX = cellX;
-      endY = cellY;
-      drawLine(startX, startY, endX, endY, 255, 0, 0);
-      firstLineClick = false;
+    // CIRCLE DRAWING ALGORITHM
+    if (currentRightClickMouseState && !lastRightClickMouseState) {
+      if (!firstCircleClick) {
+        startX = cellX;
+        startY = cellY;
+        firstCircleClick = true;
 
-      std::cout << "Line drawn till tile: (" << endX << ", " << endY << ")\n";
+        plotCell(startX, startY, 0, 0, 0);
+
+        std::cout << "Initial point: (" << startX << ", " << startY << ")\n";
+      } else {
+        endX = cellX;
+        endY = cellY;
+        // Parse and calculation of the radius
+        int radius = (int)(sqrt(((endX - startX) * (endX - startX)) +
+                                ((endY - startY) * (endY - startY))));
+        bresCircle(startX, startY, radius);
+        firstCircleClick = false;
+
+        std::cout << "Circle drawn in: (" << endX << ", " << endY << ")\n";
+      }
     }
+    lastRightClickMouseState = currentRightClickMouseState;
+
+    // LINE DRAWING ALGORITHM
+    bool currentLeftClickMouseState =
+        (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS);
+
+    if (currentLeftClickMouseState && !lastLeftClickMouseState) {
+      if (!firstLineClick) {
+        startX = cellX;
+        startY = cellY;
+        firstLineClick = true;
+
+        plotCell(startX, startY, 255, 0, 0);
+
+        std::cout << "Initial tile: (" << startX << ", " << startY << ")\n";
+      } else {
+        endX = cellX;
+        endY = cellY;
+        drawLine(startX, startY, endX, endY, 255, 0, 0);
+        firstLineClick = false;
+
+        std::cout << "Line drawn till tile: (" << endX << ", " << endY << ")\n";
+      }
+    }
+    lastLeftClickMouseState = currentLeftClickMouseState;
   }
-  lastLeftClickMouseState = currentLeftClickMouseState;
 }
 
 void handleCanvasResize(int width, int height) {
@@ -515,4 +541,23 @@ void bresElipse(int xc, int yc, int r1, int r2) {
   int x = 0, y = r1;
   int d = 3 - (2 * r1);
   drawCircle(xc, yc, x, y);
+}
+
+void mainMenuBar()
+{
+  if (ImGui::BeginMainMenuBar()) // Opens the global horizontal bar
+  {
+    if (ImGui::BeginMenu("File"))
+    {
+      if (ImGui::MenuItem("New", "Ctrl+N")) { /* Handle action */ }
+      if (ImGui::MenuItem("Open", "Ctrl+O")) { /* Handle action */ }
+      ImGui::EndMenu();
+    }
+    if (ImGui::BeginMenu("Edit"))
+    {
+      if (ImGui::MenuItem("Undo", "Ctrl+Z")) { /* Handle action */ }
+      ImGui::EndMenu();
+    }
+    ImGui::EndMainMenuBar(); // Closes the global horizontal bar
+  }
 }
