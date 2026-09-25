@@ -28,6 +28,7 @@ void plotCell(int cellX, int cellY, ImVec4 color);
 void drawCircle(int xc, int yc, int x, int y);
 void bresCircle(int xc, int yc, int r);
 void bresElipse(int xc, int yc, int r1, int r2);
+void drawRectangle(int x0, int y0, int x1, int y1, ImVec4 color);
 void mainMenuBar();
 
 //---------------------------------------------
@@ -60,9 +61,10 @@ static ImVec4 color =
     ImVec4(0.0f / 255.0f, 0.0f / 255.0f, 0.0f / 255.0f, 255.0f / 255.0f);
 
 // Button variables
+bool freeDrawing = false;
 bool line = true;
 bool circle = false;
-bool square = false;
+bool rectangle = false;
 bool fill = false;
 
 // Shaders
@@ -215,31 +217,43 @@ int main() {
                      ImGuiWindowFlags_NoResize);
     ImGui::Text("Color Picker and shapes v1");
 
+    if (ImGui::Button("Free Drawing")) {
+      freeDrawing = true;
+      line = false;
+      circle = false;
+      rectangle = false;
+      fill = false;
+    }
+    ImGui::SameLine();
     if (ImGui::Button("Line")) {
+      freeDrawing = true;
       line = true;
       circle = false;
-      square = false;
+      rectangle = false;
       fill = false;
     }
     ImGui::SameLine();
     if (ImGui::Button("Circle")) {
+      freeDrawing = true;
       line = false;
       circle = true;
-      square = false;
+      rectangle = false;
       fill = false;
     }
     ImGui::SameLine();
-    if (ImGui::Button("Square")) {
+    if (ImGui::Button("Rectangle")) {
+      freeDrawing = true;
       line = false;
       circle = false;
-      square = true;
+      rectangle = true;
       fill = false;
     }
     ImGui::SameLine();
     if (ImGui::Button("Fill")) {
+      freeDrawing = true;
       line = false;
       circle = false;
-      square = false;
+      rectangle = false;
       fill = true;
     }
 
@@ -288,7 +302,8 @@ int main() {
 
 // process all input: query GLFW whether relevant keys are pressed/released this
 // frame and react accordingly
-void processInput(GLFWwindow *window) {
+void processInput(GLFWwindow *window)
+{
   if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
     glfwSetWindowShouldClose(window, true);
   }
@@ -364,6 +379,29 @@ void processInput(GLFWwindow *window) {
           firstLeftClick = false;
 
           std::cout << "Circle drawn in: (" << endX << ", " << endY << ")\n";
+        }
+      }
+      lastLeftClickMouseState = currentLeftClickMouseState;
+
+    } else if (rectangle == true) {
+      // RECTANGLE DRAWING INPUT
+      if (currentLeftClickMouseState && !lastLeftClickMouseState) {
+        if (!firstLeftClick) {
+          startX = cellX;
+          startY = cellY;
+          firstLeftClick = true;
+
+          plotCell(startX, startY, color);
+
+          std::cout << "Initial tile: (" << startX << ", " << startY << ")\n";
+        } else {
+          endX = cellX;
+          endY = cellY;
+          drawRectangle(startX, startY, endX, endY, color);
+          firstLeftClick = false;
+
+          std::cout << "Rectangle drawn till tile: (" << endX << ", " << endY
+                    << ")\n";
         }
       }
       lastLeftClickMouseState = currentLeftClickMouseState;
@@ -584,6 +622,19 @@ void bresElipse(int xc, int yc, int r1, int r2) {
   int x = 0, y = r1;
   int d = 3 - (2 * r1);
   drawCircle(xc, yc, x, y);
+}
+
+void drawRectangle(int x0, int y0, int x1, int y1, ImVec4 color) {
+  startX = x0;
+  startY = y0;
+
+  endX = x1;
+  endY = y1;
+
+  drawLine(startX, startY, startX, endY, color); // Top line
+  drawLine(startX, startY, endX, startY, color); // Left line
+  drawLine(endX, startY, endX, endY, color); // Right line
+  drawLine(startX, endY, endX, endY, color); // Bottom line
 }
 
 void mainMenuBar() {
