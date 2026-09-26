@@ -234,44 +234,45 @@ int main() {
     // My ImGUI window!!
     //---------------------------------------
     ImGui::SetNextWindowSize(
-        ImVec2(canvasWidth * 0.15, canvasHeight - menuBarHeight));
+        ImVec2(canvasWidth * 0.12, canvasHeight - menuBarHeight));
     ImGui::SetNextWindowPos(
-        ImVec2(canvasWidth - canvasWidth * 0.15, menuBarHeight));
+        ImVec2(canvasWidth - canvasWidth * 0.12, menuBarHeight));
     ImGui::Begin("Paintlike UI", NULL,
                  ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar |
                      ImGuiWindowFlags_NoResize);
     // ImGui::Text("Color Picker and shapes v1");
+    ImVec2 buttonWidth = ImVec2(-1.0f, 0.0f);
 
     ImGui::SeparatorText("Drawing Options");
-    if (ImGui::Button("Free Drawing", ImVec2(-1.0f, 0.0f))) {
+    if (ImGui::RadioButton("Free Drawing", freeDrawing)) {
       freeDrawing = true;
       line = false;
       circle = false;
       rectangle = false;
       fill = false;
     }
-    if (ImGui::Button("Line", ImVec2(-1.0f, 0.0f))) {
+    if (ImGui::RadioButton("Line", line)) {
       freeDrawing = false;
       line = true;
       circle = false;
       rectangle = false;
       fill = false;
     }
-    if (ImGui::Button("Circle", ImVec2(-1.0f, 0.0f))) {
+    if (ImGui::RadioButton("Circle", circle)) {
       freeDrawing = false;
       line = false;
       circle = true;
       rectangle = false;
       fill = false;
     }
-    if (ImGui::Button("Rectangle", ImVec2(-1.0f, 0.0f))) {
+    if (ImGui::RadioButton("Rectangle", rectangle)) {
       freeDrawing = false;
       line = false;
       circle = false;
       rectangle = true;
       fill = false;
     }
-    if (ImGui::Button("Fill", ImVec2(-1.0f, 0.0f))) {
+    if (ImGui::RadioButton("Fill", fill)) {
       freeDrawing = false;
       line = false;
       circle = false;
