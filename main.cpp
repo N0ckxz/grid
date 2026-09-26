@@ -50,7 +50,7 @@ void drawCircle(int xc, int yc, int x, int y);
 
 void drawRectangle(int x0, int y0, int x1, int y1, ImVec4 color);
 
-void mainMenuBar();
+float mainMenuBar();
 
 //---------------------------------------------
 // GLOBAL VARIABLES
@@ -225,52 +225,53 @@ int main() {
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
+    ImGuiStyle &style = ImGui::GetStyle();
     // ImGui::ShowDemoWindow(); // Show demo window! :)
-    // mainMenuBar();
+    mainMenuBar();
+    float menuBarHeight = mainMenuBar();
 
     //---------------------------------------
     // My ImGUI window!!
     //---------------------------------------
-    ImGui::SetNextWindowSize(ImVec2(canvasWidth, canvasHeight * 0.12));
-    ImGui::SetNextWindowPos(ImVec2(0, 0));
+    ImGui::SetNextWindowSize(
+        ImVec2(canvasWidth * 0.15, canvasHeight - menuBarHeight));
+    ImGui::SetNextWindowPos(
+        ImVec2(canvasWidth - canvasWidth * 0.15, menuBarHeight));
     ImGui::Begin("Paintlike UI", NULL,
                  ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar |
                      ImGuiWindowFlags_NoResize);
-    ImGui::Text("Color Picker and shapes v1");
+    // ImGui::Text("Color Picker and shapes v1");
 
-    if (ImGui::Button("Free Drawing")) {
+    ImGui::SeparatorText("Drawing Options");
+    if (ImGui::Button("Free Drawing", ImVec2(-1.0f, 0.0f))) {
       freeDrawing = true;
       line = false;
       circle = false;
       rectangle = false;
       fill = false;
     }
-    ImGui::SameLine();
-    if (ImGui::Button("Line")) {
+    if (ImGui::Button("Line", ImVec2(-1.0f, 0.0f))) {
       freeDrawing = false;
       line = true;
       circle = false;
       rectangle = false;
       fill = false;
     }
-    ImGui::SameLine();
-    if (ImGui::Button("Circle")) {
+    if (ImGui::Button("Circle", ImVec2(-1.0f, 0.0f))) {
       freeDrawing = false;
       line = false;
       circle = true;
       rectangle = false;
       fill = false;
     }
-    ImGui::SameLine();
-    if (ImGui::Button("Rectangle")) {
+    if (ImGui::Button("Rectangle", ImVec2(-1.0f, 0.0f))) {
       freeDrawing = false;
       line = false;
       circle = false;
       rectangle = true;
       fill = false;
     }
-    ImGui::SameLine();
-    if (ImGui::Button("Fill")) {
+    if (ImGui::Button("Fill", ImVec2(-1.0f, 0.0f))) {
       freeDrawing = false;
       line = false;
       circle = false;
@@ -278,17 +279,18 @@ int main() {
       fill = true;
     }
 
+    float w = (ImGui::GetContentRegionAvail().x);
     // ImGui::ColorPicker3("Select your color!!!", (float*)&color,
     // ImGuiColorEditFlags_DisplayRGB | ImGuiColorEditFlags_NoAlpha);
-
-    float w = (ImGui::GetContentRegionAvail().y);
+    ImGui::SeparatorText("Color Options");
     ImGui::SetNextItemWidth(w);
     ImGui::ColorPicker3(
-        "Color Picker", (float *)&color,
+        "", (float *)&color,
         ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_NoSidePreview |
             ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoAlpha);
 
     ImGui::End();
+
     // input
     processInput(window);
 
@@ -447,7 +449,8 @@ void processInput(GLFWwindow *window) {
       startY = cellY;
 
       if (currentLeftClickMouseState && !lastLeftClickMouseState) {
-        floodFill(startX, startY, getColor(startX, startY), color);
+        floodFill(startX, startY,
+                  getColor(startX * CELL_SIZE, startY * CELL_SIZE), color);
       }
     }
     lastLeftClickMouseState = currentLeftClickMouseState;
@@ -740,9 +743,13 @@ void drawRectangle(int x0, int y0, int x1, int y1, ImVec4 color) {
   drawLine(startX, endY, endX, endY, color);     // Bottom line
 }
 
-void mainMenuBar() {
+float mainMenuBar() {
+  float menuHeight = 0.0f;
+
   if (ImGui::BeginMainMenuBar()) // Opens the global horizontal bar
   {
+    menuHeight = ImGui::GetWindowSize().y;
+
     if (ImGui::BeginMenu("File")) {
       if (ImGui::MenuItem("New", "Ctrl+N")) {
         /* Handle action */
@@ -760,4 +767,5 @@ void mainMenuBar() {
     }
     ImGui::EndMainMenuBar(); // Closes the global horizontal bar
   }
+  return menuHeight;
 }
