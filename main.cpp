@@ -10,8 +10,8 @@
 // clang-format on
 #include <cmath>
 #include <iostream>
-#include <vector>
 #include <queue>
+#include <vector>
 
 // initializing functions
 void handleCanvasResize(int width,
@@ -22,6 +22,11 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void processInput(GLFWwindow *window);
 
 ImVec4 getColor(int x, int y);
+
+bool colorsMatch(ImVec4 c1, ImVec4 c2);
+
+void floodFill(int startX, int startY, ImVec4 targetColor,
+               ImVec4 replacementColor);
 
 void plot(int x, int y);
 
@@ -62,19 +67,19 @@ const unsigned int SCR_WIDTH = 300;
 const unsigned int SCR_HEIGHT = 300;
 const int CELL_SIZE = 10; // Size of every block in the grid
 
-//MOUSE COORDINATES FOR DRAWING LOGIC
+// MOUSE COORDINATES FOR DRAWING LOGIC
 int startY = 0;
 int startX = 0;
 int endY = 0;
 int endX = 0;
 
-//Left and Right click variables, currently only using left click
+// Left and Right click variables, currently only using left click
 bool firstLeftClick = false;
 bool firstRightClick = false;
 
 // Color variable
 static ImVec4 color =
-        ImVec4(0.0f / 255.0f, 0.0f / 255.0f, 0.0f / 255.0f, 255.0f / 255.0f);
+    ImVec4(0.0f / 255.0f, 0.0f / 255.0f, 0.0f / 255.0f, 255.0f / 255.0f);
 
 // Button variables
 bool freeDrawing = true;
@@ -85,636 +90,674 @@ bool fill = false;
 
 // Shaders
 const char *vertexShaderSource = "#version 460 core\n"
-        "layout (location = 0) in vec2 aPos;\n"
-        "layout (location = 1) in vec2 aTexCoord;\n"
-        "out vec2 TexCoord;\n"
-        "void main()\n"
-        "{\n"
-        "   gl_Position = vec4(aPos, 0.0, 1.0);\n"
-        "   TexCoord = aTexCoord;\n"
-        "}\0";
+                                 "layout (location = 0) in vec2 aPos;\n"
+                                 "layout (location = 1) in vec2 aTexCoord;\n"
+                                 "out vec2 TexCoord;\n"
+                                 "void main()\n"
+                                 "{\n"
+                                 "   gl_Position = vec4(aPos, 0.0, 1.0);\n"
+                                 "   TexCoord = aTexCoord;\n"
+                                 "}\0";
 
 const char *fragmentShaderSource =
-        "#version 460 core\n"
-        "out vec4 FragColor;\n"
-        "in vec2 TexCoord;\n"
-        "uniform sampler2D ourTexture;\n"
-        "void main()\n"
-        "{\n"
-        "   FragColor = texture(ourTexture, TexCoord);\n"
-        "}\n\0";
+    "#version 460 core\n"
+    "out vec4 FragColor;\n"
+    "in vec2 TexCoord;\n"
+    "uniform sampler2D ourTexture;\n"
+    "void main()\n"
+    "{\n"
+    "   FragColor = texture(ourTexture, TexCoord);\n"
+    "}\n\0";
 
-int main()
-{
-    // glfw: initialize and configure
-    // ------------------------------
-    glfwInit();
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+int main() {
+  // glfw: initialize and configure
+  // ------------------------------
+  glfwInit();
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+  glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 #ifdef __APPLE__
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+  glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
 
-    // glfw window creation
-    // --------------------
-    GLFWwindow *window =
-            glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
-    if (window == NULL) {
-        std::cout << "Failed to create GLFW window" << std::endl;
-        glfwTerminate();
-        return -1;
-    }
-    glfwMakeContextCurrent(window);
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+  // glfw window creation
+  // --------------------
+  GLFWwindow *window =
+      glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
+  if (window == NULL) {
+    std::cout << "Failed to create GLFW window" << std::endl;
+    glfwTerminate();
+    return -1;
+  }
+  glfwMakeContextCurrent(window);
+  glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-    // imgui context
-    // --------------------
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO &io = ImGui::GetIO();
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-    // Setup Platform/Renderer backends
-    ImGui_ImplGlfw_InitForOpenGL(
-        window, true); // Second param install_callback=true will install GLFW
-    // callbacks and chain to existing ones.
-    ImGui_ImplOpenGL3_Init();
-    bool open = true;
+  // imgui context
+  // --------------------
+  IMGUI_CHECKVERSION();
+  ImGui::CreateContext();
+  ImGuiIO &io = ImGui::GetIO();
+  io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+  // Setup Platform/Renderer backends
+  ImGui_ImplGlfw_InitForOpenGL(
+      window, true); // Second param install_callback=true will install GLFW
+  // callbacks and chain to existing ones.
+  ImGui_ImplOpenGL3_Init();
+  bool open = true;
 
-    // glad: load all OpenGL function pointers
-    // ---------------------------------------
-    if (!gladLoadGLLoader((GLADloadproc) glfwGetProcAddress)) {
-        std::cout << "Failed to initialize GLAD" << std::endl;
-        return -1;
-    }
+  // glad: load all OpenGL function pointers
+  // ---------------------------------------
+  if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+    std::cout << "Failed to initialize GLAD" << std::endl;
+    return -1;
+  }
 
-    // Build and compile shaders
-    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-    glCompileShader(vertexShader);
+  // Build and compile shaders
+  GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
+  glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
+  glCompileShader(vertexShader);
 
-    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-    glCompileShader(fragmentShader);
+  GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+  glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
+  glCompileShader(fragmentShader);
 
-    GLuint shaderProgram = glCreateProgram();
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-    glLinkProgram(shaderProgram);
+  GLuint shaderProgram = glCreateProgram();
+  glAttachShader(shaderProgram, vertexShader);
+  glAttachShader(shaderProgram, fragmentShader);
+  glLinkProgram(shaderProgram);
 
-    // Clean up individual shader objects after linking
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
+  // Clean up individual shader objects after linking
+  glDeleteShader(vertexShader);
+  glDeleteShader(fragmentShader);
 
-    // SETTING UP GEOMETRY (Quad, VBO, VAO)
-    float quadVertices[] = {
-        // Positions   // TexCoords
-        -1.0f, 1.0f, 0.0f, 1.0f, // Top-Left
-        -1.0f, -1.0f, 0.0f, 0.0f, // Bottom-Left
-        1.0f, -1.0f, 1.0f, 0.0f, // Bottom-Right
+  // SETTING UP GEOMETRY (Quad, VBO, VAO)
+  float quadVertices[] = {
+      // Positions   // TexCoords
+      -1.0f, 1.0f,  0.0f, 1.0f, // Top-Left
+      -1.0f, -1.0f, 0.0f, 0.0f, // Bottom-Left
+      1.0f,  -1.0f, 1.0f, 0.0f, // Bottom-Right
 
-        -1.0f, 1.0f, 0.0f, 1.0f, // Top-Left
-        1.0f, -1.0f, 1.0f, 0.0f, // Bottom-Right
-        1.0f, 1.0f, 1.0f, 1.0f // Top-Right
-    };
+      -1.0f, 1.0f,  0.0f, 1.0f, // Top-Left
+      1.0f,  -1.0f, 1.0f, 0.0f, // Bottom-Right
+      1.0f,  1.0f,  1.0f, 1.0f  // Top-Right
+  };
+
+  //---------------------------------------
+  // TEXTURES, VBO AND VAO
+  //---------------------------------------
+  GLuint VAO, VBO;
+  glGenVertexArrays(1, &VAO);
+  glGenBuffers(1, &VBO);
+
+  glBindVertexArray(VAO);
+
+  glBindBuffer(GL_ARRAY_BUFFER, VBO);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices,
+               GL_STATIC_DRAW);
+
+  // Position Attribute (location = 0)
+  glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
+  glEnableVertexAttribArray(0);
+
+  // TexCoord Attribute (location = 1)
+  glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float),
+                        (void *)(2 * sizeof(float)));
+  glEnableVertexAttribArray(1);
+
+  // Setting up canvas texture
+
+  textureID;                               // Texture declaration
+  glGenTextures(1, &textureID);            // ID and vector/pointer of textures
+  glBindTexture(GL_TEXTURE_2D, textureID); // We bind the texture to GPU VRAM
+
+  // Set texture filtering (GL_NEAREST for crisp textures)
+
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+  handleCanvasResize(SCR_WIDTH, SCR_HEIGHT);
+
+  // RENDER LOOP
+  // -----------
+  while (!glfwWindowShouldClose(window)) {
+    // we start a demo imgui window
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+    // ImGui::ShowDemoWindow(); // Show demo window! :)
+    // mainMenuBar();
 
     //---------------------------------------
-    // TEXTURES, VBO AND VAO
+    // My ImGUI window!!
     //---------------------------------------
-    GLuint VAO, VBO;
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-
-    glBindVertexArray(VAO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices,
-                 GL_STATIC_DRAW);
-
-    // Position Attribute (location = 0)
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *) 0);
-    glEnableVertexAttribArray(0);
-
-    // TexCoord Attribute (location = 1)
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float),
-                          (void *) (2 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-
-    // Setting up canvas texture
-
-    textureID; // Texture declaration
-    glGenTextures(1, &textureID); // ID and vector/pointer of textures
-    glBindTexture(GL_TEXTURE_2D, textureID); // We bind the texture to GPU VRAM
-
-    // Set texture filtering (GL_NEAREST for crisp textures)
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-    handleCanvasResize(SCR_WIDTH, SCR_HEIGHT);
-
-    // RENDER LOOP
-    // -----------
-    while (!glfwWindowShouldClose(window)) {
-        // we start a demo imgui window
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame();
-        // ImGui::ShowDemoWindow(); // Show demo window! :)
-        // mainMenuBar();
-
-        //---------------------------------------
-        // My ImGUI window!!
-        //---------------------------------------
-        ImGui::SetNextWindowSize(ImVec2(canvasWidth, canvasHeight * 0.12));
-        ImGui::SetNextWindowPos(ImVec2(0, 0));
-        ImGui::Begin("Paintlike UI", NULL,
-                     ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar |
+    ImGui::SetNextWindowSize(ImVec2(canvasWidth, canvasHeight * 0.12));
+    ImGui::SetNextWindowPos(ImVec2(0, 0));
+    ImGui::Begin("Paintlike UI", NULL,
+                 ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar |
                      ImGuiWindowFlags_NoResize);
-        ImGui::Text("Color Picker and shapes v1");
+    ImGui::Text("Color Picker and shapes v1");
 
-        if (ImGui::Button("Free Drawing")) {
-            freeDrawing = true;
-            line = false;
-            circle = false;
-            rectangle = false;
-            fill = false;
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Line")) {
-            freeDrawing = false;
-            line = true;
-            circle = false;
-            rectangle = false;
-            fill = false;
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Circle")) {
-            freeDrawing = false;
-            line = false;
-            circle = true;
-            rectangle = false;
-            fill = false;
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Rectangle")) {
-            freeDrawing = false;
-            line = false;
-            circle = false;
-            rectangle = true;
-            fill = false;
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Fill")) {
-            freeDrawing = false;
-            line = false;
-            circle = false;
-            rectangle = false;
-            fill = true;
-        }
+    if (ImGui::Button("Free Drawing")) {
+      freeDrawing = true;
+      line = false;
+      circle = false;
+      rectangle = false;
+      fill = false;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Line")) {
+      freeDrawing = false;
+      line = true;
+      circle = false;
+      rectangle = false;
+      fill = false;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Circle")) {
+      freeDrawing = false;
+      line = false;
+      circle = true;
+      rectangle = false;
+      fill = false;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Rectangle")) {
+      freeDrawing = false;
+      line = false;
+      circle = false;
+      rectangle = true;
+      fill = false;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Fill")) {
+      freeDrawing = false;
+      line = false;
+      circle = false;
+      rectangle = false;
+      fill = true;
+    }
 
-        float w = (ImGui::GetContentRegionAvail().y);
-        // ImGui::ColorPicker3("Select your color!!!", (float*)&color,
-        // ImGuiColorEditFlags_DisplayRGB | ImGuiColorEditFlags_NoAlpha);
-        ImGui::SetNextItemWidth(w);
-        ImGui::ColorPicker3(
-            "##MyColor##6", (float *) &color,
-            ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_NoSidePreview |
+    // ImGui::ColorPicker3("Select your color!!!", (float*)&color,
+    // ImGuiColorEditFlags_DisplayRGB | ImGuiColorEditFlags_NoAlpha);
+
+    float w = (ImGui::GetContentRegionAvail().y);
+    ImGui::SetNextItemWidth(w);
+    ImGui::ColorPicker3(
+        "Color Picker", (float *)&color,
+        ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_NoSidePreview |
             ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoAlpha);
 
-        ImGui::End();
-        // input
-        processInput(window);
+    ImGui::End();
+    // input
+    processInput(window);
 
-        // render
+    // render
 
-        // We append our little programs
-        glUseProgram(shaderProgram);
-        glBindTexture(GL_TEXTURE_2D, textureID);
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, canvasWidth, canvasHeight, GL_RGB,
-                        GL_UNSIGNED_BYTE, canvasData.data());
-        glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
+    // We append our little programs
+    glUseProgram(shaderProgram);
+    glBindTexture(GL_TEXTURE_2D, textureID);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, canvasWidth, canvasHeight, GL_RGB,
+                    GL_UNSIGNED_BYTE, canvasData.data());
+    glBindVertexArray(VAO);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
 
-        ImGui::Render();
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-        // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved
-        // etc.)
-        glfwSwapBuffers(window);
-        glfwPollEvents();
-    }
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
+    ImGui::Render();
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+    // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved
+    // etc.)
+    glfwSwapBuffers(window);
+    glfwPollEvents();
+  }
+  ImGui_ImplOpenGL3_Shutdown();
+  ImGui_ImplGlfw_Shutdown();
+  ImGui::DestroyContext();
 
-    glDeleteVertexArrays(1, &VAO);
-    glDeleteBuffers(1, &VBO);
-    glDeleteProgram(shaderProgram);
+  glDeleteVertexArrays(1, &VAO);
+  glDeleteBuffers(1, &VBO);
+  glDeleteProgram(shaderProgram);
 
-    // glfw: terminate, clearing all previously allocated GLFW resources.
-    glfwTerminate();
-    return 0;
+  // glfw: terminate, clearing all previously allocated GLFW resources.
+  glfwTerminate();
+  return 0;
 }
 
 // process all input: query GLFW whether relevant keys are pressed/released this
 // frame and react accordingly
-void processInput(GLFWwindow *window)
-{
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
-        glfwSetWindowShouldClose(window, true);
-    }
-    // Press the letter O to draw elipse
-    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) {
-    }
+void processInput(GLFWwindow *window) {
+  if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+    glfwSetWindowShouldClose(window, true);
+  }
+  // Press the letter O to draw elipse
+  if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) {
+  }
 
-    double dXpos, dYpos;
-    glfwGetCursorPos(window, &dXpos, &dYpos);
-    // int xpos = (int)dXpos;
-    // int ypos = (int)dYpos;
+  double dXpos, dYpos;
+  glfwGetCursorPos(window, &dXpos, &dYpos);
+  // int xpos = (int)dXpos;
+  // int ypos = (int)dYpos;
 
-    int winWidth, winHeight;
-    glfwGetWindowSize(window, &winWidth, &winHeight);
+  int winWidth, winHeight;
+  glfwGetWindowSize(window, &winWidth, &winHeight);
 
-    int pixelX = (int) ((dXpos / winWidth) * canvasWidth);
-    int pixelY = (int) ((dYpos / winHeight) * canvasHeight);
+  int pixelX = (int)((dXpos / winWidth) * canvasWidth);
+  int pixelY = (int)((dYpos / winHeight) * canvasHeight);
 
-    int cellX = pixelX / CELL_SIZE;
-    int cellY = pixelY / CELL_SIZE;
+  int cellX = pixelX / CELL_SIZE;
+  int cellY = pixelY / CELL_SIZE;
 
-    //static bool lastRightClickMouseState = false;
-    static bool lastLeftClickMouseState = false;
+  // static bool lastRightClickMouseState = false;
+  static bool lastLeftClickMouseState = false;
 
-    if (ImGui::GetIO().WantCaptureMouse == true) {
-    } else {
-        // CURSOR POSITION IN GRID LOGIC
-        bool currentLeftClickMouseState =
-                (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS);
+  if (ImGui::GetIO().WantCaptureMouse == true) {
+  } else {
+    // CURSOR POSITION IN GRID LOGIC
+    bool currentLeftClickMouseState =
+        (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS);
 
-        if (freeDrawing == true) {
-            // FREE DRAWING INPUT AND LOGIC (doesnt require a function)
-            static int lastX = 0;
-            static int lastY = 0;
+    if (freeDrawing == true) {
+      // FREE DRAWING INPUT AND LOGIC (doesnt require a function)
+      static int lastX = 0;
+      static int lastY = 0;
 
-            if (currentLeftClickMouseState) {
-                if (!lastLeftClickMouseState) {
-                    lastX = cellX;
-                    lastY = cellY;
-                    plotCell(lastX, lastY, color);
-                } else {
-                    drawLine(lastX, lastY, cellX, cellY, color);
-                    lastX = cellX;
-                    lastY = cellY;
-                }
-            }
-            lastLeftClickMouseState = currentLeftClickMouseState;
-        } else if (line == true) {
-            // LINE DRAWING INPUT
-            if (currentLeftClickMouseState && !lastLeftClickMouseState) {
-                if (!firstLeftClick) {
-                    startX = cellX;
-                    startY = cellY;
-                    firstLeftClick = true;
-
-                    plotCell(startX, startY, color);
-
-                    std::cout << "Initial tile: (" << startX << ", " << startY << ")\n";
-                } else {
-                    endX = cellX;
-                    endY = cellY;
-                    drawLine(startX, startY, endX, endY, color);
-                    firstLeftClick = false;
-
-                    std::cout << "Line drawn till tile: (" << endX << ", " << endY
-                            << ")\n";
-                }
-            }
-            lastLeftClickMouseState = currentLeftClickMouseState;
-        } else if (circle == true) {
-            // CIRCLE DRAWING INPUT
-            if (currentLeftClickMouseState && !lastLeftClickMouseState) {
-                if (!firstLeftClick) {
-                    startX = cellX;
-                    startY = cellY;
-                    firstLeftClick = true;
-
-                    plotCell(startX, startY);
-
-                    std::cout << "Initial point: (" << startX << ", " << startY << ")\n";
-                } else {
-                    endX = cellX;
-                    endY = cellY;
-                    // Parse and calculation of the radius
-                    int radius = (int) (sqrt(((endX - startX) * (endX - startX)) +
-                                             ((endY - startY) * (endY - startY))));
-                    bresCircle(startX, startY, radius);
-                    firstLeftClick = false;
-
-                    std::cout << "Circle drawn in: (" << endX << ", " << endY << ")\n";
-                }
-            }
-            lastLeftClickMouseState = currentLeftClickMouseState;
-        } else if (rectangle == true) {
-            // RECTANGLE DRAWING INPUT
-            if (currentLeftClickMouseState && !lastLeftClickMouseState) {
-                if (!firstLeftClick) {
-                    startX = cellX;
-                    startY = cellY;
-                    firstLeftClick = true;
-
-                    plotCell(startX, startY, color);
-
-                    std::cout << "Initial tile: (" << startX << ", " << startY << ")\n";
-                } else {
-                    endX = cellX;
-                    endY = cellY;
-                    drawRectangle(startX, startY, endX, endY, color);
-                    firstLeftClick = false;
-
-                    std::cout << "Rectangle drawn till tile: (" << endX << ", " << endY
-                            << ")\n";
-                }
-            }
-            lastLeftClickMouseState = currentLeftClickMouseState;
+      if (currentLeftClickMouseState) {
+        if (!lastLeftClickMouseState) {
+          lastX = cellX;
+          lastY = cellY;
+          plotCell(lastX, lastY, color);
+        } else {
+          drawLine(lastX, lastY, cellX, cellY, color);
+          lastX = cellX;
+          lastY = cellY;
         }
+      }
+      lastLeftClickMouseState = currentLeftClickMouseState;
+    } else if (line == true) {
+      // LINE DRAWING INPUT
+      if (currentLeftClickMouseState && !lastLeftClickMouseState) {
+        if (!firstLeftClick) {
+          startX = cellX;
+          startY = cellY;
+          firstLeftClick = true;
+
+          plotCell(startX, startY, color);
+
+          std::cout << "Initial tile: (" << startX << ", " << startY << ")\n";
+        } else {
+          endX = cellX;
+          endY = cellY;
+          drawLine(startX, startY, endX, endY, color);
+          firstLeftClick = false;
+
+          std::cout << "Line drawn till tile: (" << endX << ", " << endY
+                    << ")\n";
+        }
+      }
+      lastLeftClickMouseState = currentLeftClickMouseState;
+    } else if (circle == true) {
+      // CIRCLE DRAWING INPUT
+      if (currentLeftClickMouseState && !lastLeftClickMouseState) {
+        if (!firstLeftClick) {
+          startX = cellX;
+          startY = cellY;
+          firstLeftClick = true;
+
+          plotCell(startX, startY);
+
+          std::cout << "Initial point: (" << startX << ", " << startY << ")\n";
+        } else {
+          endX = cellX;
+          endY = cellY;
+          // Parse and calculation of the radius
+          int radius = (int)(sqrt(((endX - startX) * (endX - startX)) +
+                                  ((endY - startY) * (endY - startY))));
+          bresCircle(startX, startY, radius);
+          firstLeftClick = false;
+
+          std::cout << "Circle drawn in: (" << endX << ", " << endY << ")\n";
+        }
+      }
+      lastLeftClickMouseState = currentLeftClickMouseState;
+    } else if (rectangle == true) {
+      // RECTANGLE DRAWING INPUT
+      if (currentLeftClickMouseState && !lastLeftClickMouseState) {
+        if (!firstLeftClick) {
+          startX = cellX;
+          startY = cellY;
+          firstLeftClick = true;
+
+          plotCell(startX, startY, color);
+
+          std::cout << "Initial tile: (" << startX << ", " << startY << ")\n";
+        } else {
+          endX = cellX;
+          endY = cellY;
+          drawRectangle(startX, startY, endX, endY, color);
+          firstLeftClick = false;
+
+          std::cout << "Rectangle drawn till tile: (" << endX << ", " << endY
+                    << ")\n";
+        }
+      }
+      lastLeftClickMouseState = currentLeftClickMouseState;
+
+    } else if (fill == true) {
+      // FILL DRAWING INPUT
+      startX = cellX;
+      startY = cellY;
+
+      if (currentLeftClickMouseState && !lastLeftClickMouseState) {
+        floodFill(startX, startY, getColor(startX, startY), color);
+      }
     }
+    lastLeftClickMouseState = currentLeftClickMouseState;
+  }
 }
 
-void handleCanvasResize(int width, int height)
-{
-    canvasWidth = width;
-    canvasHeight = height;
-    // we resize the vector when needed
-    canvasData.resize(width * height * 3);
+void handleCanvasResize(int width, int height) {
+  canvasWidth = width;
+  canvasHeight = height;
+  // we resize the vector when needed
+  canvasData.resize(width * height * 3);
 
-    // Fill the vector with 255 (White)
-    std::fill(canvasData.begin(), canvasData.end(), 255);
+  // Fill the vector with 255 (White)
+  std::fill(canvasData.begin(), canvasData.end(), 255);
 
-    for (int y = 0; y < canvasHeight; y++) {
-        for (int x = 0; x < canvasWidth; x++) {
-            int index = (y * canvasWidth + x) * 3;
+  for (int y = 0; y < canvasHeight; y++) {
+    for (int x = 0; x < canvasWidth; x++) {
+      int index = (y * canvasWidth + x) * 3;
 
-            int cellX = x / CELL_SIZE;
-            int cellY = y / CELL_SIZE;
+      int cellX = x / CELL_SIZE;
+      int cellY = y / CELL_SIZE;
 
-            // Checkerboard texture, unused now, fill doesnt work with this on
-            if ((cellX + cellY) % 2 == 0) {
-                canvasData[index + 0] = 250;
-                canvasData[index + 1] = 250;
-                canvasData[index + 2] = 250;
-            } else {
-                canvasData[index + 0] = 250;
-                canvasData[index + 1] = 250;
-                canvasData[index + 2] = 250;
-            }
-        }
+      // Checkerboard texture, unused now, fill doesnt work with this on
+      if ((cellX + cellY) % 2 == 0) {
+        canvasData[index + 0] = 255;
+        canvasData[index + 1] = 255;
+        canvasData[index + 2] = 255;
+      } else {
+        canvasData[index + 0] = 255;
+        canvasData[index + 1] = 255;
+        canvasData[index + 2] = 255;
+      }
     }
+  }
 
-    // Fix of grid not working properly, gives allignment to the grid
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1); // Bind and reallocate GPU texture
-    // Upload the resized vector data to the GPU (vibe coded)
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB,
-                 GL_UNSIGNED_BYTE, canvasData.data());
+  // Fix of grid not working properly, gives allignment to the grid
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 1); // Bind and reallocate GPU texture
+  // Upload the resized vector data to the GPU (vibe coded)
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB,
+               GL_UNSIGNED_BYTE, canvasData.data());
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback
 // function executes
 // ---------------------------------------------------------------------------------------------
-void framebuffer_size_callback(GLFWwindow *window, int width, int height)
-{
-    // make sure the viewport matches the new window dimensions; note that width
-    // and height will be significantly larger than specified on retina displays.
-    glViewport(0, 0, width, height);
+void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
+  // make sure the viewport matches the new window dimensions; note that width
+  // and height will be significantly larger than specified on retina displays.
+  glViewport(0, 0, width, height);
 
-    handleCanvasResize(width, height);
+  handleCanvasResize(width, height);
 }
 
 // sadly, made with AI, ran out of time
-void drawLine(int x0, int y0, int x1, int y1, ImVec4 color)
-{
-    // Check if the line is horizontal-leaning (|slope| <= 1) or vertical-leaning
-    // (|slope| > 1)
-    if (abs(y1 - y0) < abs(x1 - x0)) {
-        // Low slope: step along X
-        // Ensure we always draw from left to right (x0 <= x1)
-        if (x0 > x1) {
-            plotLineLow(x1, y1, x0, y0, color);
-        } else {
-            plotLineLow(x0, y0, x1, y1, color);
-        }
+void drawLine(int x0, int y0, int x1, int y1, ImVec4 color) {
+  // Check if the line is horizontal-leaning (|slope| <= 1) or vertical-leaning
+  // (|slope| > 1)
+  if (abs(y1 - y0) < abs(x1 - x0)) {
+    // Low slope: step along X
+    // Ensure we always draw from left to right (x0 <= x1)
+    if (x0 > x1) {
+      plotLineLow(x1, y1, x0, y0, color);
     } else {
-        // High slope: step along Y
-        // Ensure we always draw from bottom to top (y0 <= y1)
-        if (y0 > y1) {
-            plotLineHigh(x1, y1, x0, y0, color);
-        } else {
-            plotLineHigh(x0, y0, x1, y1, color);
-        }
+      plotLineLow(x0, y0, x1, y1, color);
     }
+  } else {
+    // High slope: step along Y
+    // Ensure we always draw from bottom to top (y0 <= y1)
+    if (y0 > y1) {
+      plotLineHigh(x1, y1, x0, y0, color);
+    } else {
+      plotLineHigh(x0, y0, x1, y1, color);
+    }
+  }
 }
 
 // function for plotting in the lower parts of the octant
-void plotLineLow(int x0, int y0, int x1, int y1, ImVec4 color)
-{
-    int dx = x1 - x0;
-    int dy = y1 - y0;
-    int yi = 1;
+void plotLineLow(int x0, int y0, int x1, int y1, ImVec4 color) {
+  int dx = x1 - x0;
+  int dy = y1 - y0;
+  int yi = 1;
 
-    // handle downward slopes
-    if (dy < 0) {
-        yi = -1;
-        dy = -dy;
+  // handle downward slopes
+  if (dy < 0) {
+    yi = -1;
+    dy = -dy;
+  }
+
+  int D = (2 * dy) - dx;
+  int y = y0;
+
+  // drive the loop along the y axis
+  for (int x = x0; x <= x1; x++) {
+    plotCell(x, y, color);
+
+    if (D > 0) {
+      y += yi;
+      D += 2 * (dy - dx);
+    } else {
+      D += 2 * dy;
     }
+  }
+}
 
-    int D = (2 * dy) - dx;
-    int y = y0;
+void plotLineHigh(int x0, int y0, int x1, int y1, ImVec4 color) {
+  int dx = x1 - x0;
+  int dy = y1 - y0;
+  int xi = 1;
 
-    // drive the loop along the y axis
-    for (int x = x0; x <= x1; x++) {
-        plotCell(x, y, color);
+  // handle upward slopes
+  if (dx < 0) {
+    xi = -1;
+    dx = -dx;
+  }
 
-        if (D > 0) {
-            y += yi;
-            D += 2 * (dy - dx);
-        } else {
-            D += 2 * dy;
+  int D = (2 * dx) - dy;
+  int x = x0;
+
+  // drive the loop along the x axis
+  for (int y = y0; y <= y1; y++) {
+    plotCell(x, y, color);
+
+    if (D > 0) {
+      x += xi;
+      D += 2 * (dx - dy);
+    } else {
+      D += 2 * dx;
+    }
+  }
+}
+
+// So we can get color information of a tile
+ImVec4 getColor(int x, int y) {
+  // Same logic as plot function
+  int flippedY = (canvasHeight - 1) - y;
+  int index = (flippedY * canvasWidth + x) * 3;
+
+  float r = canvasData[index + 0] / 255.0f;
+  float g = canvasData[index + 1] / 255.0f;
+  float b = canvasData[index + 2] / 255.0f;
+
+  return ImVec4(r, g, b, 1.0f);
+}
+
+// So we can compare colors
+bool colorsMatch(ImVec4 c1, ImVec4 c2) {
+  return std::abs(c1.x - c2.x) < 0.01f && std::abs(c1.y - c2.y) < 0.01f &&
+         std::abs(c1.z - c2.z) < 0.01f;
+}
+
+void floodFill(int startX, int startY, ImVec4 targetColor,
+               ImVec4 replacementColor) {
+  if (colorsMatch(targetColor, replacementColor)) {
+    return;
+  }
+
+  int maxCellX = canvasWidth / CELL_SIZE;
+  int maxCellY = canvasHeight / CELL_SIZE;
+
+  std::queue<std::pair<int, int>> q;
+
+  q.push({startX, startY});
+  plotCell(startX, startY, replacementColor);
+
+  int dx[] = {1, -1, 0, 0};
+  int dy[] = {0, 0, 1, -1};
+
+  while (!q.empty()) {
+    auto [cx, cy] = q.front();
+    q.pop();
+
+    for (int i = 0; i < 4; i++) {
+      int nx = cx + dx[i];
+      int ny = cy + dy[i];
+
+      if (nx >= 0 && nx < maxCellX && ny >= 0 && ny < maxCellY) {
+        ImVec4 neighborColor = getColor(nx * CELL_SIZE, ny * CELL_SIZE);
+
+        if (colorsMatch(neighborColor, targetColor)) {
+          plotCell(nx, ny, replacementColor);
+          q.push({nx, ny});
         }
+      }
     }
+  }
 }
 
-void plotLineHigh(int x0, int y0, int x1, int y1, ImVec4 color)
-{
-    int dx = x1 - x0;
-    int dy = y1 - y0;
-    int xi = 1;
+void plot(int x, int y) {
+  // check how the bounds are against the current resolution
+  if (x < 0 || x >= canvasWidth || y < 0 || y >= canvasHeight)
+    return;
 
-    // handle upward slopes
-    if (dx < 0) {
-        xi = -1;
-        dx = -dx;
-    }
-
-    int D = (2 * dx) - dy;
-    int x = x0;
-
-    // drive the loop along the x axis
-    for (int y = y0; y <= y1; y++) {
-        plotCell(x, y, color);
-
-        if (D > 0) {
-            x += xi;
-            D += 2 * (dx - dy);
-        } else {
-            D += 2 * dx;
-        }
-    }
+  // Calculating the offset for 3 channels
+  int flippedY = (canvasHeight - 1) - y;
+  int index = (flippedY * canvasWidth + x) * 3;
 }
 
-ImVec4 getColor(int x, int y)
-{
-    // Same logic as plot function
-    int flippedY = (canvasHeight - 1) - y;
-    int index = (flippedY * canvasWidth + x) * 3;
+void plot(int x, int y, ImVec4 color) {
+  // check how the bounds are against the current resolution
+  if (x < 0 || x >= canvasWidth || y < 0 || y >= canvasHeight)
+    return;
 
-    float r = canvasData[index + 0] / 255.0f;
-    float g = canvasData[index + 1] / 255.0f;
-    float b = canvasData[index + 2] / 255.0f;
+  // Calculating the offset for 3 channels
+  int flippedY = (canvasHeight - 1) - y;
+  int index = (flippedY * canvasWidth + x) * 3;
 
-    return ImVec4(r, g, b, 1.0f);
-}
-
-void plot(int x, int y)
-{
-    // check how the bounds are against the current resolution
-    if (x < 0 || x >= canvasWidth || y < 0 || y >= canvasHeight)
-        return;
-
-    // Calculating the offset for 3 channels
-    int flippedY = (canvasHeight - 1) - y;
-    int index = (flippedY * canvasWidth + x) * 3;
-}
-
-void plot(int x, int y, ImVec4 color)
-{
-    // check how the bounds are against the current resolution
-    if (x < 0 || x >= canvasWidth || y < 0 || y >= canvasHeight)
-        return;
-
-    // Calculating the offset for 3 channels
-    int flippedY = (canvasHeight - 1) - y;
-    int index = (flippedY * canvasWidth + x) * 3;
-
-    // Updating the global canvas vector
-    canvasData[index + 0] = (unsigned char) (color.x * 255.0f);
-    canvasData[index + 1] = (unsigned char) (color.y * 255.0f);
-    canvasData[index + 2] = (unsigned char) (color.z * 255.0f);
+  // Updating the global canvas vector
+  canvasData[index + 0] = (unsigned char)(color.x * 255.0f);
+  canvasData[index + 1] = (unsigned char)(color.y * 255.0f);
+  canvasData[index + 2] = (unsigned char)(color.z * 255.0f);
 }
 
 // Gets the coordinates of a BLOCK, not a pixel (like the last time)
-void plotCell(int cellX, int cellY, ImVec4 color)
-{
-    int startPixelX = cellX * CELL_SIZE;
-    int startPixelY = cellY * CELL_SIZE;
+void plotCell(int cellX, int cellY, ImVec4 color) {
+  int startPixelX = cellX * CELL_SIZE;
+  int startPixelY = cellY * CELL_SIZE;
 
-    // filling the block with CELL_SIZE x CELL_SIZE
-    for (int y = 0; y < CELL_SIZE; y++) {
-        for (int x = 0; x < CELL_SIZE; x++) {
-            int currentPixelX = startPixelX + x;
-            int currentPixelY = startPixelY + y;
+  // filling the block with CELL_SIZE x CELL_SIZE
+  for (int y = 0; y < CELL_SIZE; y++) {
+    for (int x = 0; x < CELL_SIZE; x++) {
+      int currentPixelX = startPixelX + x;
+      int currentPixelY = startPixelY + y;
 
-            plot(currentPixelX, currentPixelY, color);
-        }
+      plot(currentPixelX, currentPixelY, color);
     }
+  }
 }
 
-void plotCell(int cellX, int cellY)
-{
-    int startPixelX = cellX * CELL_SIZE;
-    int startPixelY = cellY * CELL_SIZE;
+void plotCell(int cellX, int cellY) {
+  int startPixelX = cellX * CELL_SIZE;
+  int startPixelY = cellY * CELL_SIZE;
 
-    // filling the block with CELL_SIZE x CELL_SIZE
-    for (int y = 0; y < CELL_SIZE; y++) {
-        for (int x = 0; x < CELL_SIZE; x++) {
-            int currentPixelX = startPixelX + x;
-            int currentPixelY = startPixelY + y;
+  // filling the block with CELL_SIZE x CELL_SIZE
+  for (int y = 0; y < CELL_SIZE; y++) {
+    for (int x = 0; x < CELL_SIZE; x++) {
+      int currentPixelX = startPixelX + x;
+      int currentPixelY = startPixelY + y;
 
-            plot(currentPixelX, currentPixelY);
-        }
+      plot(currentPixelX, currentPixelY);
     }
+  }
 }
 
 // first drawCircle implementation, not gonna work tho
 // it did work, each one of these are quadrants of the circle
-void drawCircle(int xc, int yc, int x, int y)
-{
-    plotCell(xc + x, yc + y, color);
-    plotCell(xc - x, yc + y, color);
-    plotCell(xc - x, yc - y, color);
-    plotCell(xc + x, yc - y, color);
-    plotCell(xc + y, yc + x, color);
-    plotCell(xc - y, yc + x, color);
-    plotCell(xc - y, yc - x, color);
-    plotCell(xc + y, yc - x, color);
+void drawCircle(int xc, int yc, int x, int y) {
+  plotCell(xc + x, yc + y, color);
+  plotCell(xc - x, yc + y, color);
+  plotCell(xc - x, yc - y, color);
+  plotCell(xc + x, yc - y, color);
+  plotCell(xc + y, yc + x, color);
+  plotCell(xc - y, yc + x, color);
+  plotCell(xc - y, yc - x, color);
+  plotCell(xc + y, yc - x, color);
 }
 
-void bresCircle(int xc, int yc, int r)
-{
-    int x = 0, y = r;
-    int d = 3 - (2 * r);
-    drawCircle(xc, yc, x, y);
+void bresCircle(int xc, int yc, int r) {
+  int x = 0, y = r;
+  int d = 3 - (2 * r);
+  drawCircle(xc, yc, x, y);
 
-    while (y >= x) {
-        x++;
-        if (d > 0) {
-            y--;
-            d = d + 4 * (x - y) + 10;
-        } else {
-            d = d + 4 * x + 6;
-        }
-        drawCircle(xc, yc, x, y);
+  while (y >= x) {
+    x++;
+    if (d > 0) {
+      y--;
+      d = d + 4 * (x - y) + 10;
+    } else {
+      d = d + 4 * x + 6;
     }
-}
-
-void bresElipse(int xc, int yc, int r1, int r2)
-{
-    int x = 0, y = r1;
-    int d = 3 - (2 * r1);
     drawCircle(xc, yc, x, y);
+  }
 }
 
-void drawRectangle(int x0, int y0, int x1, int y1, ImVec4 color)
-{
-    startX = x0;
-    startY = y0;
-
-    endX = x1;
-    endY = y1;
-
-    drawLine(startX, startY, startX, endY, color); // Top line
-    drawLine(startX, startY, endX, startY, color); // Left line
-    drawLine(endX, startY, endX, endY, color); // Right line
-    drawLine(startX, endY, endX, endY, color); // Bottom line
+void bresElipse(int xc, int yc, int r1, int r2) {
+  int x = 0, y = r1;
+  int d = 3 - (2 * r1);
+  drawCircle(xc, yc, x, y);
 }
 
-void mainMenuBar()
-{
-    if (ImGui::BeginMainMenuBar()) // Opens the global horizontal bar
-    {
-        if (ImGui::BeginMenu("File")) {
-            if (ImGui::MenuItem("New", "Ctrl+N")) {
-                /* Handle action */
-            }
-            if (ImGui::MenuItem("Open", "Ctrl+O")) {
-                /* Handle action */
-            }
-            ImGui::EndMenu();
-        }
-        if (ImGui::BeginMenu("Edit")) {
-            if (ImGui::MenuItem("Undo", "Ctrl+Z")) {
-                /* Handle action */
-            }
-            ImGui::EndMenu();
-        }
-        ImGui::EndMainMenuBar(); // Closes the global horizontal bar
+void drawRectangle(int x0, int y0, int x1, int y1, ImVec4 color) {
+  startX = x0;
+  startY = y0;
+
+  endX = x1;
+  endY = y1;
+
+  drawLine(startX, startY, startX, endY, color); // Top line
+  drawLine(startX, startY, endX, startY, color); // Left line
+  drawLine(endX, startY, endX, endY, color);     // Right line
+  drawLine(startX, endY, endX, endY, color);     // Bottom line
+}
+
+void mainMenuBar() {
+  if (ImGui::BeginMainMenuBar()) // Opens the global horizontal bar
+  {
+    if (ImGui::BeginMenu("File")) {
+      if (ImGui::MenuItem("New", "Ctrl+N")) {
+        /* Handle action */
+      }
+      if (ImGui::MenuItem("Open", "Ctrl+O")) {
+        /* Handle action */
+      }
+      ImGui::EndMenu();
     }
+    if (ImGui::BeginMenu("Edit")) {
+      if (ImGui::MenuItem("Undo", "Ctrl+Z")) {
+        /* Handle action */
+      }
+      ImGui::EndMenu();
+    }
+    ImGui::EndMainMenuBar(); // Closes the global horizontal bar
+  }
 }
