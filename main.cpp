@@ -13,6 +13,8 @@
 #include <queue>
 #include <vector>
 
+// Dear ImGui custom menu for the program
+void imGuiMenu();
 // initializing functions
 void handleCanvasResize(int width,
                         int height); // since textureID is global now, we can
@@ -221,76 +223,12 @@ int main() {
   // RENDER LOOP
   // -----------
   while (!glfwWindowShouldClose(window)) {
-    // we start a demo imgui window
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
     ImGuiStyle &style = ImGui::GetStyle();
     // ImGui::ShowDemoWindow(); // Show demo window! :)
-    mainMenuBar();
-    float menuBarHeight = mainMenuBar();
-
-    //---------------------------------------
-    // My ImGUI window!!
-    //---------------------------------------
-    ImGui::SetNextWindowSize(
-        ImVec2(canvasWidth * 0.12, canvasHeight - menuBarHeight));
-    ImGui::SetNextWindowPos(
-        ImVec2(canvasWidth - canvasWidth * 0.12, menuBarHeight));
-    ImGui::Begin("Paintlike UI", NULL,
-                 ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar |
-                     ImGuiWindowFlags_NoResize);
-    // ImGui::Text("Color Picker and shapes v1");
-    ImVec2 buttonWidth = ImVec2(-1.0f, 0.0f);
-
-    ImGui::SeparatorText("Drawing Options");
-    if (ImGui::RadioButton("Free Drawing", freeDrawing)) {
-      freeDrawing = true;
-      line = false;
-      circle = false;
-      rectangle = false;
-      fill = false;
-    }
-    if (ImGui::RadioButton("Line", line)) {
-      freeDrawing = false;
-      line = true;
-      circle = false;
-      rectangle = false;
-      fill = false;
-    }
-    if (ImGui::RadioButton("Circle", circle)) {
-      freeDrawing = false;
-      line = false;
-      circle = true;
-      rectangle = false;
-      fill = false;
-    }
-    if (ImGui::RadioButton("Rectangle", rectangle)) {
-      freeDrawing = false;
-      line = false;
-      circle = false;
-      rectangle = true;
-      fill = false;
-    }
-    if (ImGui::RadioButton("Fill", fill)) {
-      freeDrawing = false;
-      line = false;
-      circle = false;
-      rectangle = false;
-      fill = true;
-    }
-
-    float w = (ImGui::GetContentRegionAvail().x);
-    // ImGui::ColorPicker3("Select your color!!!", (float*)&color,
-    // ImGuiColorEditFlags_DisplayRGB | ImGuiColorEditFlags_NoAlpha);
-    ImGui::SeparatorText("Color Options");
-    ImGui::SetNextItemWidth(w);
-    ImGui::ColorPicker3(
-        "", (float *)&color,
-        ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_NoSidePreview |
-            ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoAlpha);
-
-    ImGui::End();
+    imGuiMenu();
 
     // input
     processInput(window);
@@ -323,6 +261,74 @@ int main() {
   // glfw: terminate, clearing all previously allocated GLFW resources.
   glfwTerminate();
   return 0;
+}
+
+void imGuiMenu() {
+  //---------------------------------------
+  // My ImGUI window!!
+  //---------------------------------------
+
+  mainMenuBar();
+  float menuBarHeight = mainMenuBar();
+
+  ImGui::SetNextWindowSize(
+      ImVec2(canvasWidth * 0.12, canvasHeight - menuBarHeight));
+  ImGui::SetNextWindowPos(
+      ImVec2(canvasWidth - canvasWidth * 0.12, menuBarHeight));
+  ImGui::Begin("Paintlike UI", NULL,
+               ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar |
+                   ImGuiWindowFlags_NoResize);
+  // ImGui::Text("Color Picker and shapes v1");
+  ImVec2 buttonWidth = ImVec2(-1.0f, 0.0f);
+
+  ImGui::SeparatorText("Drawing Options");
+  if (ImGui::RadioButton("Free Drawing", freeDrawing)) {
+    freeDrawing = true;
+    line = false;
+    circle = false;
+    rectangle = false;
+    fill = false;
+  }
+  if (ImGui::RadioButton("Line", line)) {
+    freeDrawing = false;
+    line = true;
+    circle = false;
+    rectangle = false;
+    fill = false;
+  }
+  if (ImGui::RadioButton("Circle", circle)) {
+    freeDrawing = false;
+    line = false;
+    circle = true;
+    rectangle = false;
+    fill = false;
+  }
+  if (ImGui::RadioButton("Rectangle", rectangle)) {
+    freeDrawing = false;
+    line = false;
+    circle = false;
+    rectangle = true;
+    fill = false;
+  }
+  if (ImGui::RadioButton("Fill", fill)) {
+    freeDrawing = false;
+    line = false;
+    circle = false;
+    rectangle = false;
+    fill = true;
+  }
+
+  float w = (ImGui::GetContentRegionAvail().x);
+  // ImGui::ColorPicker3("Select your color!!!", (float*)&color,
+  // ImGuiColorEditFlags_DisplayRGB | ImGuiColorEditFlags_NoAlpha);
+  ImGui::SeparatorText("Color Options");
+  ImGui::SetNextItemWidth(w);
+  ImGui::ColorPicker3(
+      "", (float *)&color,
+      ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_NoSidePreview |
+          ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoAlpha);
+
+  ImGui::End();
 }
 
 // process all input: query GLFW whether relevant keys are pressed/released this
