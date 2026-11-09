@@ -62,12 +62,12 @@ std::vector<unsigned char> canvasData;
 GLuint textureID;
 
 // Dynamic variables for the size of the canvas
-int canvasWidth = 300;
-int canvasHeight = 300;
+int canvasWidth = 1920;
+int canvasHeight = 1080;
 
 // settings
-const unsigned int SCR_WIDTH = 300;
-const unsigned int SCR_HEIGHT = 300;
+const unsigned int SCR_WIDTH = 1920;
+const unsigned int SCR_HEIGHT = 1080;
 const int CELL_SIZE = 10; // Size of every block in the grid
 
 // MOUSE COORDINATES FOR DRAWING LOGIC
@@ -114,6 +114,8 @@ const char *fragmentShaderSource =
 
 int main()
 {
+    using namespace std;
+
     // glfw: initialize and configure
     // ------------------------------
     glfwInit();
@@ -270,13 +272,13 @@ void imGuiMenu()
     //---------------------------------------
     // My ImGUI window!!
     //---------------------------------------
-    mainMenuBar();
     float menuBarHeight = mainMenuBar();
+    ImVec2 displaySize = ImGui::GetIO().DisplaySize;
 
     ImGui::SetNextWindowSize(
-        ImVec2(canvasWidth * 0.12, canvasHeight - menuBarHeight));
+        ImVec2(displaySize.x * 0.12f, displaySize.y - menuBarHeight));
     ImGui::SetNextWindowPos(
-        ImVec2(canvasWidth - canvasWidth * 0.12, menuBarHeight));
+        ImVec2(displaySize.x - displaySize.x * 0.12f, menuBarHeight));
     ImGui::Begin("Paintlike UI", NULL,
                  ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar |
                  ImGuiWindowFlags_NoResize);
@@ -331,6 +333,7 @@ void imGuiMenu()
         ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoAlpha);
 
     ImGui::End();
+    std::cout << "Coordinates set in: " << (displaySize.x * 0.12f, displaySize.y - menuBarHeight) << std::endl;
 }
 
 // process all input: query GLFW whether relevant keys are pressed/released this
