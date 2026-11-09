@@ -322,7 +322,7 @@ void imGuiMenu()
         triangle = false;
         fill = false;
     }
-    if (ImGui::RadioButton("Triangle", rectangle)) {
+    if (ImGui::RadioButton("Triangle", triangle)) {
         freeDrawing = false;
         line = false;
         circle = false;
@@ -480,7 +480,6 @@ void processInput(GLFWwindow *window)
                     startY = cellY;
                     firstLeftClick = true;
 
-                    plotCell(startX, startY, color);
                 } else {
                     endX = cellX;
                     endY = cellY;
@@ -805,21 +804,16 @@ void drawRectangle(int x0, int y0, int x1, int y1, ImVec4 color)
 }
 
 void drawTriangle(int x0, int y0, int x1, int y1, ImVec4 color) {
-    startX = x0;
-    startY = y0;
+    int left   = std::min(x0, x1);
+    int right  = std::max(x0, x1);
+    int top    = std::min(y0, y1);
+    int bottom = std::max(y0, y1);
 
-    endX = x1;
-    endY = y1;
+    int apexX = (left + right) / 2;
 
-    int halfStartX = (int)startX / 2;
-    int halfStartY = (int)startY / 2;
-    int halfEndX   = (int)endX / 2;
-    int halfEndY   = (int)endY / 2;
-
-    drawLine((startX + halfStartX), startY, startX, endY, color); // Left line
-    drawLine((startX + halfStartX), startY, endX, endY, color); // Right line
-    drawLine(startX, endY, endX, endY, color); // Bottom line
-
+    drawLine(left,  bottom, right, bottom, color);
+    drawLine(left,  bottom, apexX, top,    color);
+    drawLine(right, bottom, apexX, top,    color);
 }
 
 float mainMenuBar()
