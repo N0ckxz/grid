@@ -12,6 +12,7 @@
 #include <iostream>
 #include <queue>
 #include <vector>
+#include <algorithm>
 
 // Dear ImGui custom menu for the program
 void imGuiMenu();
@@ -53,6 +54,8 @@ void drawCircle(int xc, int yc, int x, int y);
 
 void drawRectangle(int x0, int y0, int x1, int y1, ImVec4 color);
 
+void drawTriangle(int x0, int y0, int x1, int y1, ImVec4 color);
+
 float mainMenuBar();
 
 //---------------------------------------------
@@ -89,6 +92,7 @@ bool freeDrawing = true;
 bool line = false;
 bool circle = false;
 bool rectangle = false;
+bool triangle = false;
 bool fill = false;
 
 // Shaders
@@ -291,6 +295,7 @@ void imGuiMenu()
         line = false;
         circle = false;
         rectangle = false;
+        triangle = false;
         fill = false;
     }
     if (ImGui::RadioButton("Line", line)) {
@@ -298,6 +303,7 @@ void imGuiMenu()
         line = true;
         circle = false;
         rectangle = false;
+        triangle = false;
         fill = false;
     }
     if (ImGui::RadioButton("Circle", circle)) {
@@ -305,6 +311,7 @@ void imGuiMenu()
         line = false;
         circle = true;
         rectangle = false;
+        triangle = false;
         fill = false;
     }
     if (ImGui::RadioButton("Rectangle", rectangle)) {
@@ -312,6 +319,15 @@ void imGuiMenu()
         line = false;
         circle = false;
         rectangle = true;
+        triangle = false;
+        fill = false;
+    }
+    if (ImGui::RadioButton("Triangle", rectangle)) {
+        freeDrawing = false;
+        line = false;
+        circle = false;
+        rectangle = false;
+        triangle = true;
         fill = false;
     }
     if (ImGui::RadioButton("Fill", fill)) {
@@ -319,6 +335,7 @@ void imGuiMenu()
         line = false;
         circle = false;
         rectangle = false;
+        triangle = false;
         fill = true;
     }
 
@@ -455,6 +472,23 @@ void processInput(GLFWwindow *window)
                 }
             }
             lastLeftClickMouseState = currentLeftClickMouseState;
+        } else if (triangle == true) {
+            // TRIANGLE DRAWING INPUT
+            if (currentLeftClickMouseState && !lastLeftClickMouseState) {
+                if (!firstLeftClick) {
+                    startX = cellX;
+                    startY = cellY;
+                    firstLeftClick = true;
+
+                    plotCell(startX, startY, color);
+                } else {
+                    endX = cellX;
+                    endY = cellY;
+                    drawTriangle(startX, startY, endX, endY, color);
+                    firstLeftClick = false;
+                }
+            }
+
         } else if (fill == true) {
             // FILL DRAWING INPUT
             startX = cellX;
@@ -768,6 +802,24 @@ void drawRectangle(int x0, int y0, int x1, int y1, ImVec4 color)
     drawLine(startX, startY, endX, startY, color); // Left line
     drawLine(endX, startY, endX, endY, color); // Right line
     drawLine(startX, endY, endX, endY, color); // Bottom line
+}
+
+void drawTriangle(int x0, int y0, int x1, int y1, ImVec4 color) {
+    startX = x0;
+    startY = y0;
+
+    endX = x1;
+    endY = y1;
+
+    int halfStartX = (int)startX / 2;
+    int halfStartY = (int)startY / 2;
+    int halfEndX   = (int)endX / 2;
+    int halfEndY   = (int)endY / 2;
+
+    drawLine((startX + halfStartX), startY, startX, endY, color); // Left line
+    drawLine((startX + halfStartX), startY, endX, endY, color); // Right line
+    drawLine(startX, endY, endX, endY, color); // Bottom line
+
 }
 
 float mainMenuBar()
