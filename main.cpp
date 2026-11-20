@@ -27,6 +27,12 @@ void createCanvas(int width, int height);
 // just use width and height
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 
+ImVec2 screenToCanvas(ImVec2 s);
+
+void fitCanvasToWindow(GLFWwindow *window);
+
+void updateCamera(ImVec2 mouse);
+
 void processInput(GLFWwindow *window);
 
 ImVec4 getColor(int x, int y);
@@ -109,15 +115,21 @@ bool triangle = false;
 bool fill = false;
 
 // Shaders
-const char *vertexShaderSource = "#version 460 core\n"
-                                 "layout (location = 0) in vec2 aPos;\n"
-                                 "layout (location = 1) in vec2 aTexCoord;\n"
-                                 "out vec2 TexCoord;\n"
-                                 "void main()\n"
-                                 "{\n"
-                                 "   gl_Position = vec4(aPos, 0.0, 1.0);\n"
-                                 "   TexCoord = aTexCoord;\n"
-                                 "}\0";
+const char *vertexShaderSource =
+    "#version 460 core\n"
+    "layout (location = 0) in vec2 aPos;\n"
+    "layout (location = 1) in vec2 aTexCoord;\n"
+    "uniform float uZoom;\n"
+    "uniform vec2 uPan;\n"
+    "uniform vec2 uViewport;\n"
+    "out vec2 TexCoord;\n"
+    "void main()\n"
+    "{\n"
+    "   vec2 screen = aPos * uZoom + uPan;\n"
+    "   vec2 ndc = (screen / uViewport) * 2.0 - 1.0;\n"
+    "   gl_Position = vec4(ndc.x, -ndc.y, 0.0, 1.0);\n"
+    "   TexCoord = aTexCoord;\n"
+    "}\0";
 
 const char *fragmentShaderSource =
     "#version 460 core\n"
@@ -194,20 +206,24 @@ int main() {
   glDeleteShader(fragmentShader);
 
   // SETTING UP GEOMETRY (Quad, VBO, VAO)
+  float W = (float)canvasWidth, H = (float)canvasHeight;
   float quadVertices[] = {
-      // Positions   // TexCoords
-      -1.0f, 1.0f,  0.0f, 1.0f, // Top-Left
-      -1.0f, -1.0f, 0.0f, 0.0f, // Bottom-Left
-      1.0f,  -1.0f, 1.0f, 0.0f, // Bottom-Right
+      // pos     // uv
+      0.0f, 0.0f, 0.0f, 0.0f, // top-left
+      0.0f, H,    0.0f, 1.0f, // bottom-left
+      W,    H,    1.0f, 1.0f, // bottom-right
 
-      -1.0f, 1.0f,  0.0f, 1.0f, // Top-Left
-      1.0f,  -1.0f, 1.0f, 0.0f, // Bottom-Right
-      1.0f,  1.0f,  1.0f, 1.0f  // Top-Right
+      0.0f, 0.0f, 0.0f, 0.0f, // top-left
+      W,    H,    1.0f, 1.0f, // bottom-right
+      W,    0.0f, 1.0f, 0.0f  // top-right
   };
 
   //---------------------------------------
   // TEXTURES, VBO AND VAO
   //---------------------------------------
+  GLint zoomLoc = glGetUniformLocation(shaderProgram, "uZoom");
+  GLint panLoc = glGetUniformLocation(shaderProgram, "uPan");
+  GLint viewportLoc = glGetUniformLocation(shaderProgram, "uViewport");
   GLuint VAO, VBO;
   glGenVertexArrays(1, &VAO);
   glGenBuffers(1, &VBO);
@@ -256,9 +272,17 @@ int main() {
     processInput(window);
 
     // render
+    int winW, winH;
+    glfwGetWindowSize(window, &winW, &winH);
 
-    // We append our little programs
+    glClearColor(0.18f, 0.18f, 0.18f, 1.0f); // dark gray around the canvas
+    glClear(GL_COLOR_BUFFER_BIT);
+
     glUseProgram(shaderProgram);
+    glUniform1f(zoomLoc, zoom);
+    glUniform2f(panLoc, pan.x, pan.y);
+    glUniform2f(viewportLoc, (float)winW, (float)winH);
+
     glBindTexture(GL_TEXTURE_2D, textureID);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, canvasWidth, canvasHeight, GL_RGB,
                     GL_UNSIGNED_BYTE, canvasData.data());
@@ -368,13 +392,47 @@ void imGuiMenu() {
             << std::endl;
 }
 
+ImVec2 screenToCanvas(ImVec2 s) {
+  return {(s.x - pan.x) / zoom, (s.y - pan.y) / zoom};
+}
+
+void fitCanvasToWindow(GLFWwindow *window) {
+  int w, h;
+  glfwGetWindowSize(window, &w, &h);
+
+  float menuH = ImGui::GetFrameHeight();
+  float availW = w - w * 0.12f;
+  float availH = h - menuH;
+
+  zoom = std::min(availW / canvasWidth, availH / canvasHeight) * 0.9f;
+  pan.x = (availW - canvasWidth * zoom) * 0.5f;
+  pan.y = menuH + (availH - canvasHeight * zoom) * 0.5f;
+}
+
+void updateCamera(ImVec2 mouse) {
+  ImGuiIO &io = ImGui::GetIO();
+  if (io.WantCaptureMouse)
+    return;
+
+  if (io.MouseWheel != 0.0f) {
+    ImVec2 before = screenToCanvas(mouse);
+    zoom = std::clamp(zoom * powf(1.1f, io.MouseWheel), 0.5f, 64.0f);
+    pan.x = mouse.x - before.x * zoom;
+    pan.y = mouse.y - before.y * zoom;
+  }
+
+  if (ImGui::IsMouseDown(ImGuiMouseButton_Middle)) {
+    pan.x += io.MouseDelta.x;
+    pan.y += io.MouseDelta.y;
+  }
+}
+
 // process all input: query GLFW whether relevant keys are pressed/released this
 // frame and react accordingly
 void processInput(GLFWwindow *window) {
   if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
     glfwSetWindowShouldClose(window, true);
   }
-  // Press the letter O to draw elipse
   if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) {
   }
 
@@ -383,14 +441,15 @@ void processInput(GLFWwindow *window) {
   // int xpos = (int)dXpos;
   // int ypos = (int)dYpos;
 
-  int winWidth, winHeight;
-  glfwGetWindowSize(window, &winWidth, &winHeight);
+  ImVec2 mouse = {(float)dXpos, (float)dYpos};
+  updateCamera(mouse);
 
-  int pixelX = (int)((dXpos / winWidth) * canvasWidth);
-  int pixelY = (int)((dYpos / winHeight) * canvasHeight);
+  if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS)
+    fitCanvasToWindow(window);
 
-  int cellX = pixelX / CELL_SIZE;
-  int cellY = pixelY / CELL_SIZE;
+  ImVec2 c = screenToCanvas(mouse);
+  int cellX = (int)floorf(c.x);
+  int cellY = (int)floorf(c.y);
 
   // static bool lastRightClickMouseState = false;
   static bool lastLeftClickMouseState = false;
@@ -426,7 +485,7 @@ void processInput(GLFWwindow *window) {
           startY = cellY;
           firstLeftClick = true;
 
-          plot(startX, startY);
+          plot(startX, startY, color);
 
           std::cout << "Initial tile: (" << startX << ", " << startY << ")\n";
         } else {
@@ -508,8 +567,9 @@ void processInput(GLFWwindow *window) {
       startY = cellY;
 
       if (currentLeftClickMouseState && !lastLeftClickMouseState) {
-        floodFill(startX, startY,
-                  getColor(startX * CELL_SIZE, startY * CELL_SIZE), color);
+        if (startX >= 0 && startX < canvasWidth && startY >= 0 &&
+            startY < canvasHeight)
+          floodFill(startX, startY, getColor(startX, startY), color);
       }
     }
     lastLeftClickMouseState = currentLeftClickMouseState;
@@ -653,15 +713,11 @@ void plotLineHigh(int x0, int y0, int x1, int y1, ImVec4 color) {
 
 // So we can get color information of a tile
 ImVec4 getColor(int x, int y) {
-  // Same logic as plot function
-  int flippedY = (canvasHeight - 1) - y;
-  int index = (flippedY * canvasWidth + x) * 3;
-
-  float r = canvasData[index + 0] / 255.0f;
-  float g = canvasData[index + 1] / 255.0f;
-  float b = canvasData[index + 2] / 255.0f;
-
-  return ImVec4(r, g, b, 1.0f);
+  if (x < 0 || x >= canvasWidth || y < 0 || y >= canvasHeight)
+    return ImVec4(0, 0, 0, 1);
+  int index = (y * canvasWidth + x) * 3; // no flip
+  return ImVec4(canvasData[index] / 255.0f, canvasData[index + 1] / 255.0f,
+                canvasData[index + 2] / 255.0f, 1.0f);
 }
 
 // So we can compare colors
@@ -672,15 +728,10 @@ bool colorsMatch(ImVec4 c1, ImVec4 c2) {
 
 void floodFill(int startX, int startY, ImVec4 targetColor,
                ImVec4 replacementColor) {
-  if (colorsMatch(targetColor, replacementColor)) {
+  if (colorsMatch(targetColor, replacementColor))
     return;
-  }
-
-  int maxCellX = canvasWidth / CELL_SIZE;
-  int maxCellY = canvasHeight / CELL_SIZE;
 
   std::queue<std::pair<int, int>> q;
-
   q.push({startX, startY});
   plot(startX, startY, replacementColor);
 
@@ -695,10 +746,8 @@ void floodFill(int startX, int startY, ImVec4 targetColor,
       int nx = cx + dx[i];
       int ny = cy + dy[i];
 
-      if (nx >= 0 && nx < maxCellX && ny >= 0 && ny < maxCellY) {
-        ImVec4 neighborColor = getColor(nx * CELL_SIZE, ny * CELL_SIZE);
-
-        if (colorsMatch(neighborColor, targetColor)) {
+      if (nx >= 0 && nx < canvasWidth && ny >= 0 && ny < canvasHeight) {
+        if (colorsMatch(getColor(nx, ny), targetColor)) {
           plot(nx, ny, replacementColor);
           q.push({nx, ny});
         }
@@ -707,64 +756,16 @@ void floodFill(int startX, int startY, ImVec4 targetColor,
   }
 }
 
-void plot(int x, int y) {
-  // check how the bounds are against the current resolution
-  if (x < 0 || x >= canvasWidth || y < 0 || y >= canvasHeight)
-    return;
-
-  // Calculating the offset for 3 channels
-  int flippedY = (canvasHeight - 1) - y;
-  int index = (flippedY * canvasWidth + x) * 3;
-}
-
 void plot(int x, int y, ImVec4 color) {
-  // check how the bounds are against the current resolution
   if (x < 0 || x >= canvasWidth || y < 0 || y >= canvasHeight)
     return;
 
-  // Calculating the offset for 3 channels
-  int flippedY = (canvasHeight - 1) - y;
-  int index = (flippedY * canvasWidth + x) * 3;
-
-  // Updating the global canvas vector
+  int index = (y * canvasWidth + x) * 3;
   canvasData[index + 0] = (unsigned char)(color.x * 255.0f);
   canvasData[index + 1] = (unsigned char)(color.y * 255.0f);
   canvasData[index + 2] = (unsigned char)(color.z * 255.0f);
 }
 
-// Gets the coordinates of a BLOCK, not a pixel (like the last time)
-void plotCell(int cellX, int cellY, ImVec4 color) {
-  int startPixelX = cellX * CELL_SIZE;
-  int startPixelY = cellY * CELL_SIZE;
-
-  // filling the block with CELL_SIZE x CELL_SIZE
-  for (int y = 0; y < CELL_SIZE; y++) {
-    for (int x = 0; x < CELL_SIZE; x++) {
-      int currentPixelX = startPixelX + x;
-      int currentPixelY = startPixelY + y;
-
-      plot(currentPixelX, currentPixelY, color);
-    }
-  }
-}
-
-void plotCell(int cellX, int cellY) {
-  int startPixelX = cellX * CELL_SIZE;
-  int startPixelY = cellY * CELL_SIZE;
-
-  // filling the block with CELL_SIZE x CELL_SIZE
-  for (int y = 0; y < CELL_SIZE; y++) {
-    for (int x = 0; x < CELL_SIZE; x++) {
-      int currentPixelX = startPixelX + x;
-      int currentPixelY = startPixelY + y;
-
-      plot(currentPixelX, currentPixelY);
-    }
-  }
-}
-
-// first drawCircle implementation, not gonna work tho
-// it did work, each one of these are quadrants of the circle
 void drawCircle(int xc, int yc, int x, int y) {
   plot(xc + x, yc + y, color);
   plot(xc - x, yc + y, color);
@@ -793,23 +794,11 @@ void bresCircle(int xc, int yc, int r) {
   }
 }
 
-void bresElipse(int xc, int yc, int r1, int r2) {
-  int x = 0, y = r1;
-  int d = 3 - (2 * r1);
-  drawCircle(xc, yc, x, y);
-}
-
 void drawRectangle(int x0, int y0, int x1, int y1, ImVec4 color) {
-  startX = x0;
-  startY = y0;
-
-  endX = x1;
-  endY = y1;
-
-  drawLine(startX, startY, startX, endY, color); // Top line
-  drawLine(startX, startY, endX, startY, color); // Left line
-  drawLine(endX, startY, endX, endY, color);     // Right line
-  drawLine(startX, endY, endX, endY, color);     // Bottom line
+  drawLine(x0, y0, x0, y1, color);
+  drawLine(x0, y0, x1, y0, color);
+  drawLine(x1, y0, x1, y1, color);
+  drawLine(x0, y1, x1, y1, color);
 }
 
 void drawTriangle(int x0, int y0, int x1, int y1, ImVec4 color) {
@@ -817,7 +806,6 @@ void drawTriangle(int x0, int y0, int x1, int y1, ImVec4 color) {
   int right = std::max(x0, x1);
   int top = std::min(y0, y1);
   int bottom = std::max(y0, y1);
-
   int apexX = (left + right) / 2;
 
   drawLine(left, bottom, right, bottom, color);
@@ -828,26 +816,22 @@ void drawTriangle(int x0, int y0, int x1, int y1, ImVec4 color) {
 float mainMenuBar() {
   float menuHeight = 0.0f;
 
-  if (ImGui::BeginMainMenuBar()) // Opens the global horizontal bar
-  {
+  if (ImGui::BeginMainMenuBar()) {
     menuHeight = ImGui::GetWindowSize().y;
 
     if (ImGui::BeginMenu("File")) {
       if (ImGui::MenuItem("New", "Ctrl+N")) {
-        /* Handle action */
       }
       if (ImGui::MenuItem("Open", "Ctrl+O")) {
-        /* Handle action */
       }
       ImGui::EndMenu();
     }
     if (ImGui::BeginMenu("Edit")) {
       if (ImGui::MenuItem("Undo", "Ctrl+Z")) {
-        /* Handle action */
       }
       ImGui::EndMenu();
     }
-    ImGui::EndMainMenuBar(); // Closes the global horizontal bar
+    ImGui::EndMainMenuBar();
   }
   return menuHeight;
 }
