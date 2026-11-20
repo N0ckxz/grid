@@ -46,10 +46,6 @@ void plot(int x, int y);
 
 void plot(int x, int y, ImVec4 color);
 
-void plotCell(int cellX, int cellY);
-
-void plotCell(int cellX, int cellY, ImVec4 color);
-
 void plotLineLow(int x0, int y0, int x1, int y1, ImVec4 color);
 
 void plotLineHigh(int x0, int y0, int x1, int y1, ImVec4 color);
@@ -84,6 +80,8 @@ const unsigned int SCR_HEIGHT = 108;
 
 const unsigned int WINDOW_WIDTH = 1280;
 const unsigned int WINDOW_HEIGHT = 720;
+
+const int CH = 4;
 
 // unused for now
 const int CELL_SIZE = 10; // Size of every block in the grid
@@ -138,7 +136,11 @@ const char *fragmentShaderSource =
     "uniform sampler2D ourTexture;\n"
     "void main()\n"
     "{\n"
-    "   FragColor = texture(ourTexture, TexCoord);\n"
+    "   vec4 t = texture(ourTexture, TexCoord);\n"
+    "   float c = mod(floor(gl_FragCoord.x / 8.0) + floor(gl_FragCoord.y / "
+    "8.0), 2.0);\n"
+    "   vec3 bg = mix(vec3(0.80), vec3(1.0), c);\n"
+    "   FragColor = vec4(mix(bg, t.rgb, t.a), 1.0);\n"
     "}\n\0";
 
 int main() {
@@ -615,11 +617,11 @@ void handleCanvasResize(int width, int height) {
 void createCanvas(int width, int height) {
   canvasWidth = width;
   canvasHeight = height;
-  canvasData.assign(width * height * 3, 255); // white
+  canvasData.assign(width * height * CH, 0); // transparent
 
   glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
   glBindTexture(GL_TEXTURE_2D, textureID);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB,
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA,
                GL_UNSIGNED_BYTE, canvasData.data());
 }
 
@@ -714,16 +716,19 @@ void plotLineHigh(int x0, int y0, int x1, int y1, ImVec4 color) {
 // So we can get color information of a tile
 ImVec4 getColor(int x, int y) {
   if (x < 0 || x >= canvasWidth || y < 0 || y >= canvasHeight)
-    return ImVec4(0, 0, 0, 1);
-  int index = (y * canvasWidth + x) * 3; // no flip
-  return ImVec4(canvasData[index] / 255.0f, canvasData[index + 1] / 255.0f,
-                canvasData[index + 2] / 255.0f, 1.0f);
+    return ImVec4(0, 0, 0, 0);
+  int i = (y * canvasWidth + x) * CH;
+  return ImVec4(canvasData[i] / 255.0f, canvasData[i + 1] / 255.0f,
+                canvasData[i + 2] / 255.0f, canvasData[i + 3] / 255.0f);
 }
 
 // So we can compare colors
-bool colorsMatch(ImVec4 c1, ImVec4 c2) {
-  return std::abs(c1.x - c2.x) < 0.01f && std::abs(c1.y - c2.y) < 0.01f &&
-         std::abs(c1.z - c2.z) < 0.01f;
+bool colorsMatch(ImVec4 a, ImVec4 b) {
+  // Every fully transparent pixel counts as the same "color", whatever its RGB
+  if (a.w < 0.01f && b.w < 0.01f)
+    return true;
+  return fabsf(a.x - b.x) < 0.01f && fabsf(a.y - b.y) < 0.01f &&
+         fabsf(a.z - b.z) < 0.01f && fabsf(a.w - b.w) < 0.01f;
 }
 
 void floodFill(int startX, int startY, ImVec4 targetColor,
@@ -760,10 +765,11 @@ void plot(int x, int y, ImVec4 color) {
   if (x < 0 || x >= canvasWidth || y < 0 || y >= canvasHeight)
     return;
 
-  int index = (y * canvasWidth + x) * 3;
+  int index = (y * canvasWidth + x) * CH;
   canvasData[index + 0] = (unsigned char)(color.x * 255.0f);
   canvasData[index + 1] = (unsigned char)(color.y * 255.0f);
   canvasData[index + 2] = (unsigned char)(color.z * 255.0f);
+  canvasData[index + 3] = (unsigned char)(color.w * 255.0f);
 }
 
 void drawCircle(int xc, int yc, int x, int y) {
