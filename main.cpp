@@ -11,8 +11,10 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <filesystem>
 #include <iostream>
 #include <queue>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -31,6 +33,7 @@
 //   Scroll wheel ... zoom toward the cursor
 //   Middle drag .... pan
 //   F .............. fit canvas to window
+//   F1 ............. show/hide the keybinds window
 //   Select tool .... drag = select, drag inside = move, Enter = commit,
 //                    Delete = erase selection, panel buttons = transforms
 //   Esc ............ quit
@@ -44,6 +47,14 @@ const unsigned int WINDOW_HEIGHT = 720;
 const int CH = 4; // RGBA, 4 bytes per pixel
 const float PANEL_FRACTION =
     0.12f; // right-hand panel width (fraction of window)
+const float PANEL_MIN_WIDTH = 210.0f; // ...but never narrower than this
+const float FONT_SIZE = 16.0f;
+
+// Width of the right-hand panel (also used to center the canvas)
+float panelWidth() {
+  return std::max(ImGui::GetIO().DisplaySize.x * PANEL_FRACTION,
+                  PANEL_MIN_WIDTH);
+}
 
 //---------------------------------------------
 // 2D TRANSFORM MATRIX (homogeneous coordinates)
@@ -118,6 +129,7 @@ float zoom = 1.0f;         // screen pixels per canvas pixel
 ImVec2 pan = {0.0f, 0.0f}; // screen position of the canvas top-left
 
 // Button variables
+// This needs replacing, this all could be a struct
 enum class Tool { Free, Line, Circle, Rectangle, Triangle, Fill, Select };
 
 struct DrawState {
@@ -132,6 +144,8 @@ struct DrawState {
   int lastX = 0, lastY = 0;   // previous pixel while free drawing
 };
 DrawState ds;
+
+bool showHelp = false; // keybinds window (F1)
 
 // Selection: pixels are lifted out of the canvas into a floating buffer,
 // transformed with a matrix, and stamped back
@@ -152,9 +166,13 @@ int mStartX = 0, mStartY = 0, mEndX = 0, mEndY = 0; // marquee, canvas pixels
 ImVec2 dragStart = {0.0f, 0.0f}; // canvas coords at move start
 Mat3 transformAtDragStart = Mat3::identity();
 
+// Shaders
 //---------------------------------------------
 // SHADERS
+// The checkerboard "transparent" background is drawn HERE, never stored in
+// canvasData.
 //---------------------------------------------
+// Vertex shader: canvas pixels -> screen pixels (zoom/pan) -> clip space
 const char *vertexShaderSource = R"GLSL(#version 460 core
 layout (location = 0) in vec2 aPos;
 layout (location = 1) in vec2 aTexCoord;
@@ -417,7 +435,7 @@ void fitCanvasToWindow(GLFWwindow *window) {
   glfwGetWindowSize(window, &w, &h);
 
   float menuH = ImGui::GetFrameHeight();
-  float availW = w - w * PANEL_FRACTION;
+  float availW = w - panelWidth();
   float availH = h - menuH;
 
   zoom = std::min(availW / canvasWidth, availH / canvasHeight) * 0.9f;
@@ -712,6 +730,13 @@ void processInput(GLFWwindow *window) {
   if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS)
     fitCanvasToWindow(window);
 
+  // F1 toggles the keybinds window (only on the frame the key goes down)
+  static bool lastF1 = false;
+  bool f1 = glfwGetKey(window, GLFW_KEY_F1) == GLFW_PRESS;
+  if (f1 && !lastF1)
+    showHelp = !showHelp;
+  lastF1 = f1;
+
   if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS)
     commitSelection();
   if (glfwGetKey(window, GLFW_KEY_DELETE) == GLFW_PRESS)
@@ -777,6 +802,195 @@ void processInput(GLFWwindow *window) {
 // UI
 //=============================================================================
 
+// Grey of a given brightness (0 = black, 1 = white)
+ImVec4 grey(float v, float a = 1.0f) { return ImVec4(v, v, v, a); }
+
+// Monochrome theme: dark greys, thin borders, sharp corners
+void setupStyle() {
+  ImGuiStyle &s = ImGui::GetStyle();
+  ImGui::StyleColorsDark(); // start from the default, then override
+
+  // Shape: square corners and 1px borders
+  s.WindowRounding = 0.0f;
+  s.ChildRounding = 0.0f;
+  s.PopupRounding = 0.0f;
+  s.FrameRounding = 0.0f;
+  s.GrabRounding = 0.0f;
+  s.ScrollbarRounding = 0.0f;
+  s.WindowBorderSize = 1.0f;
+  s.PopupBorderSize = 1.0f;
+  s.FrameBorderSize = 1.0f;
+
+  // Spacing
+  s.WindowPadding = ImVec2(12.0f, 12.0f);
+  s.FramePadding = ImVec2(8.0f, 5.0f);
+  s.ItemSpacing = ImVec2(8.0f, 7.0f);
+  s.SeparatorTextBorderSize = 1.0f;
+  s.SeparatorTextPadding = ImVec2(0.0f, 4.0f);
+  s.SeparatorTextAlign = ImVec2(0.0f, 0.5f);
+
+  // Colors (greys only)
+  ImVec4 *c = s.Colors;
+  c[ImGuiCol_Text] = grey(0.90f);
+  c[ImGuiCol_TextDisabled] = grey(0.40f);
+  c[ImGuiCol_WindowBg] = grey(0.09f);
+  c[ImGuiCol_ChildBg] = grey(0.09f);
+  c[ImGuiCol_PopupBg] = grey(0.11f);
+  c[ImGuiCol_Border] = grey(0.26f);
+  c[ImGuiCol_BorderShadow] = grey(0.0f, 0.0f);
+  c[ImGuiCol_FrameBg] = grey(0.13f);
+  c[ImGuiCol_FrameBgHovered] = grey(0.19f);
+  c[ImGuiCol_FrameBgActive] = grey(0.25f);
+  c[ImGuiCol_TitleBg] = grey(0.09f);
+  c[ImGuiCol_TitleBgActive] = grey(0.13f);
+  c[ImGuiCol_TitleBgCollapsed] = grey(0.09f);
+  c[ImGuiCol_MenuBarBg] = grey(0.09f);
+  c[ImGuiCol_ScrollbarBg] = grey(0.09f);
+  c[ImGuiCol_ScrollbarGrab] = grey(0.28f);
+  c[ImGuiCol_ScrollbarGrabHovered] = grey(0.38f);
+  c[ImGuiCol_ScrollbarGrabActive] = grey(0.50f);
+  c[ImGuiCol_CheckMark] = grey(1.00f);
+  c[ImGuiCol_SliderGrab] = grey(0.70f);
+  c[ImGuiCol_SliderGrabActive] = grey(1.00f);
+  c[ImGuiCol_Button] = grey(0.15f);
+  c[ImGuiCol_ButtonHovered] = grey(0.25f);
+  c[ImGuiCol_ButtonActive] = grey(0.35f);
+  c[ImGuiCol_Header] = grey(0.18f);
+  c[ImGuiCol_HeaderHovered] = grey(0.26f);
+  c[ImGuiCol_HeaderActive] = grey(0.34f);
+  c[ImGuiCol_Separator] = grey(0.26f);
+  c[ImGuiCol_SeparatorHovered] = grey(0.50f);
+  c[ImGuiCol_SeparatorActive] = grey(0.80f);
+  c[ImGuiCol_TableHeaderBg] = grey(0.12f);
+  c[ImGuiCol_TableBorderStrong] = grey(0.26f);
+  c[ImGuiCol_TableBorderLight] = grey(0.18f);
+  c[ImGuiCol_TableRowBg] = grey(0.0f, 0.0f);
+  c[ImGuiCol_TableRowBgAlt] = grey(1.0f, 0.03f);
+
+  // Safety net: turn EVERY style color into its grey equivalent, so nothing
+  // (nav highlight, tabs, drag-drop target...) can stay blue or yellow
+  for (int i = 0; i < ImGuiCol_COUNT; i++) {
+    ImVec4 &col = s.Colors[i];
+    float l = 0.299f * col.x + 0.587f * col.y + 0.114f * col.z;
+    col = ImVec4(l, l, l, col.w);
+  }
+}
+
+// Loads a .ttf font. Looks for a "fonts" folder next to the program first
+// (JetBrains Mono or Inter work well), then for a system font, and otherwise
+// keeps ImGui's built-in font.
+void loadFont() {
+  ImGuiIO &io = ImGui::GetIO();
+
+  std::vector<std::string> paths;
+  const char *prefixes[] = {"", "../",
+                            "../../"}; // depends on where you run from
+  const char *names[] = {"fonts/GeistMono-VariableFont_wght.ttf",
+                         "fonts/Inter-Regular.ttf", "fonts/font.ttf"};
+  for (const char *prefix : prefixes)
+    for (const char *name : names)
+      paths.push_back(std::string(prefix) + name);
+
+#ifdef _WIN32
+  paths.push_back("C:/Windows/Fonts/consola.ttf");
+  paths.push_back("C:/Windows/Fonts/segoeui.ttf");
+#else
+  paths.push_back("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf");
+#endif
+
+  for (const std::string &path : paths) {
+    std::error_code ec;
+    // Check the file exists first, ImGui asserts on a missing font
+    if (!std::filesystem::exists(path, ec))
+      continue;
+    if (io.Fonts->AddFontFromFileTTF(path.c_str(), FONT_SIZE)) {
+      std::cout << "Font loaded: " << path << std::endl;
+      return;
+    }
+  }
+  std::cout << "No .ttf found, using the default ImGui font" << std::endl;
+}
+
+// Shows a tooltip when the last widget is hovered (also works on disabled ones)
+void tip(const char *text) {
+  if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+    ImGui::SetTooltip("%s", text);
+}
+
+// Full-width button with a hover tooltip
+bool wideButton(const char *label, const char *tooltip) {
+  bool clicked = ImGui::Button(label, ImVec2(-1.0f, 0.0f));
+  tip(tooltip);
+  return clicked;
+}
+
+void section(const char *label) {
+  ImGui::PushStyleColor(ImGuiCol_Text, grey(0.55f));
+  ImGui::SeparatorText(label);
+  ImGui::PopStyleColor();
+}
+
+// Keybinds shown in the help window
+struct KeyBind {
+  const char *keys;
+  const char *action;
+};
+
+static const KeyBind generalKeys[] = {
+    {"Left click / drag", "Draw with the active tool"},
+    {"Scroll wheel", "Zoom toward the cursor"},
+    {"Middle drag", "Pan the canvas"},
+    {"F", "Fit the canvas to the window"},
+    {"F1", "Show / hide this window"},
+    {"Esc", "Quit"},
+};
+
+static const KeyBind selectKeys[] = {
+    {"Drag", "Select a rectangle"},
+    {"Drag inside selection", "Move it"},
+    {"Enter", "Commit the selection"},
+    {"Delete", "Erase the selection"},
+};
+
+template <size_t N> void keyTable(const char *id, const KeyBind (&rows)[N]) {
+  ImGuiTableFlags flags = ImGuiTableFlags_RowBg |
+                          ImGuiTableFlags_BordersInnerH |
+                          ImGuiTableFlags_SizingFixedFit;
+  if (ImGui::BeginTable(id, 2, flags)) {
+    ImGui::TableSetupColumn("Key", ImGuiTableColumnFlags_WidthFixed, 190.0f);
+    ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_WidthFixed, 280.0f);
+    for (const KeyBind &r : rows) {
+      ImGui::TableNextRow();
+      ImGui::TableNextColumn();
+      ImGui::TextUnformatted(r.keys);
+      ImGui::TableNextColumn();
+      ImGui::PushStyleColor(ImGuiCol_Text, grey(0.60f));
+      ImGui::TextUnformatted(r.action);
+      ImGui::PopStyleColor();
+    }
+    ImGui::EndTable();
+  }
+}
+
+// Floating window listing the keybinds (F1 or Help menu)
+void drawHelpWindow() {
+  if (!showHelp)
+    return;
+
+  ImVec2 size = ImGui::GetIO().DisplaySize;
+  ImGui::SetNextWindowPos(ImVec2(size.x * 0.5f, size.y * 0.5f),
+                          ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+  if (ImGui::Begin("Keybinds", &showHelp,
+                   ImGuiWindowFlags_AlwaysAutoResize |
+                       ImGuiWindowFlags_NoCollapse)) {
+    section("GENERAL");
+    keyTable("general", generalKeys);
+    section("SELECT TOOL");
+    keyTable("select", selectKeys);
+  }
+  ImGui::End();
+}
+
 // Top menu bar, returns its height
 float mainMenuBar() {
   float menuHeight = 0.0f;
@@ -810,6 +1024,10 @@ float mainMenuBar() {
       }
       ImGui::EndMenu();
     }
+    if (ImGui::BeginMenu("Help")) {
+      ImGui::MenuItem("Keybinds", "F1", &showHelp);
+      ImGui::EndMenu();
+    }
     ImGui::EndMainMenuBar(); // Closes the global horizontal bar
   }
   return menuHeight;
@@ -822,7 +1040,7 @@ void imGuiMenu() {
   //---------------------------------------
   float menuBarHeight = mainMenuBar();
   ImVec2 displaySize = ImGui::GetIO().DisplaySize;
-  float panelW = displaySize.x * PANEL_FRACTION;
+  float panelW = panelWidth();
 
   ImGui::SetNextWindowSize(ImVec2(panelW, displaySize.y - menuBarHeight));
   ImGui::SetNextWindowPos(ImVec2(displaySize.x - panelW, menuBarHeight));
@@ -831,48 +1049,56 @@ void imGuiMenu() {
                    ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
   // ImGui::Text("Color Picker and shapes v1");
 
-  ImVec2 fullWidth = ImVec2(-1.0f, 0.0f);
-
   // ---- Tools -------------------------------------------------------------
   struct ToolEntry {
     Tool tool;
     const char *label;
+    const char *tip;
   };
   static const ToolEntry tools[] = {
-      {Tool::Free, "Free Drawing"}, {Tool::Line, "Line"},
-      {Tool::Circle, "Circle"},     {Tool::Rectangle, "Rectangle"},
-      {Tool::Triangle, "Triangle"}, {Tool::Fill, "Fill"},
-      {Tool::Select, "Select"}};
+      {Tool::Free, "Free Drawing", "Hold left click and drag to draw."},
+      {Tool::Line, "Line", "Click the start, then click the end."},
+      {Tool::Circle, "Circle",
+       "Click the center, then click a point on the edge."},
+      {Tool::Rectangle, "Rectangle",
+       "Click one corner, then click the opposite corner."},
+      {Tool::Triangle, "Triangle",
+       "Click two opposite corners of its bounding box."},
+      {Tool::Fill, "Fill", "Click a region to fill it with the current color."},
+      {Tool::Select, "Select",
+       "Drag a rectangle to select. Drag inside it to move it."}};
 
-  ImGui::SeparatorText("Drawing Options");
-  for (const ToolEntry &t : tools)
+  section("TOOLS");
+  for (const ToolEntry &t : tools) {
     if (ImGui::RadioButton(t.label, ds.tool == t.tool))
       setTool(t.tool);
+    tip(t.tip);
+  }
 
   // ---- Selection transforms ---------------------------------------------
   if (ds.tool == Tool::Select) {
     const float DEG = 3.14159265f / 180.0f;
 
-    ImGui::SeparatorText("Selection");
+    section("SELECTION");
     ImGui::TextWrapped("Drag to select, drag inside to move. Enter commits, "
                        "Delete erases.");
 
     ImGui::BeginDisabled(!sel.exists); // greyed out until a selection exists
-    if (ImGui::Button("Rotate +15", fullWidth))
+    if (wideButton("Rotate +15", "Rotate 15 degrees clockwise."))
       transformSelection(Mat3::rotate(15.0f * DEG));
-    if (ImGui::Button("Rotate -15", fullWidth))
+    if (wideButton("Rotate -15", "Rotate 15 degrees counter-clockwise."))
       transformSelection(Mat3::rotate(-15.0f * DEG));
-    if (ImGui::Button("Scale x1.25", fullWidth))
+    if (wideButton("Scale x1.25", "Make the selection 25% bigger."))
       transformSelection(Mat3::scale(1.25f, 1.25f));
-    if (ImGui::Button("Scale x0.8", fullWidth))
+    if (wideButton("Scale x0.8", "Make the selection smaller."))
       transformSelection(Mat3::scale(0.8f, 0.8f));
-    if (ImGui::Button("Flip H", fullWidth))
+    if (wideButton("Flip H", "Mirror left to right."))
       transformSelection(Mat3::scale(-1.0f, 1.0f)); // reflection
-    if (ImGui::Button("Flip V", fullWidth))
+    if (wideButton("Flip V", "Mirror top to bottom."))
       transformSelection(Mat3::scale(1.0f, -1.0f));
-    if (ImGui::Button("Shear X", fullWidth))
+    if (wideButton("Shear X", "Slant the selection sideways."))
       transformSelection(Mat3::shear(0.2f, 0.0f));
-    if (ImGui::Button("Commit (Enter)", fullWidth))
+    if (wideButton("Commit (Enter)", "Stamp the selection into the canvas."))
       commitSelection();
     ImGui::EndDisabled();
   }
@@ -881,39 +1107,52 @@ void imGuiMenu() {
   float w = ImGui::GetContentRegionAvail().x;
   // ImGui::ColorPicker3("Select your color!!!", (float*)&color,
   // ImGuiColorEditFlags_DisplayRGB | ImGuiColorEditFlags_NoAlpha);
-  ImGui::SeparatorText("Color Options");
+  section("COLOR");
   ImGui::SetNextItemWidth(w);
   ImGui::ColorPicker3(
       "", (float *)&ds.color,
       ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_NoSidePreview |
           ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoAlpha);
 
+  // Reminder so the help window is easy to find
+  ImGui::PushStyleColor(ImGuiCol_Text, grey(0.45f));
+  ImGui::TextUnformatted("F1  keybinds");
+  ImGui::PopStyleColor();
+
   ImGui::End();
+
+  drawHelpWindow();
 }
 
 // Things drawn on top of the canvas that are NOT part of it (border, marker,
 // selection outline), so they never end up in the exported PNG
 void drawOverlays() {
   ImDrawList *dl = ImGui::GetBackgroundDrawList();
-  ImU32 selColor = IM_COL32(0, 150, 255, 255);
+  ImU32 white = IM_COL32(255, 255, 255, 255);
+  ImU32 black = IM_COL32(0, 0, 0, 255);
 
   // Canvas border, so the edges are visible at any zoom
   dl->AddRect(canvasToScreen({0.0f, 0.0f}),
               canvasToScreen({(float)canvasWidth, (float)canvasHeight}),
-              IM_COL32(0, 0, 0, 255));
+              IM_COL32(200, 200, 200, 255));
 
-  // Marker for the first click of two-click shapes
+  // Marker for the first click of two-click shapes (white dot, black ring)
   if (ds.hasFirstPoint) {
     ImVec2 p = canvasToScreen({ds.startX + 0.5f, ds.startY + 0.5f});
-    dl->AddCircleFilled(p, 4.0f, selColor);
+    dl->AddCircleFilled(p, 5.5f, black);
+    dl->AddCircleFilled(p, 3.5f, white);
   }
 
-  // Marquee while dragging, or the (transformed) selection outline
+  // Marquee while dragging, or the (transformed) selection outline.
+  // Drawn as a thick black line under a thin white one so it stays visible on
+  // any color.
   if (selState == SelState::Marquee) {
     int x0 = std::min(mStartX, mEndX), x1 = std::max(mStartX, mEndX) + 1;
     int y0 = std::min(mStartY, mEndY), y1 = std::max(mStartY, mEndY) + 1;
-    dl->AddRect(canvasToScreen({(float)x0, (float)y0}),
-                canvasToScreen({(float)x1, (float)y1}), selColor);
+    ImVec2 a = canvasToScreen({(float)x0, (float)y0});
+    ImVec2 b = canvasToScreen({(float)x1, (float)y1});
+    dl->AddRect(a, b, black, 0.0f, 0, 3.0f);
+    dl->AddRect(a, b, white, 0.0f, 0, 1.0f);
   } else if (sel.exists) {
     // Same matrix as the pixels, so the outline rotates and scales with them
     ImVec2 a = canvasToScreen(sel.transform.apply({0.0f, 0.0f}));
@@ -921,7 +1160,8 @@ void drawOverlays() {
     ImVec2 c =
         canvasToScreen(sel.transform.apply({(float)sel.w, (float)sel.h}));
     ImVec2 d = canvasToScreen(sel.transform.apply({0.0f, (float)sel.h}));
-    dl->AddQuad(a, b, c, d, selColor);
+    dl->AddQuad(a, b, c, d, black, 3.0f);
+    dl->AddQuad(a, b, c, d, white, 1.0f);
   }
 }
 
@@ -998,6 +1238,8 @@ int main() {
   ImGui::CreateContext();
   ImGuiIO &io = ImGui::GetIO();
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+  loadFont();   // must happen before the first frame
+  setupStyle(); // monochrome theme
   // Setup Platform/Renderer backends
   ImGui_ImplGlfw_InitForOpenGL(
       window, true); // Second param install_callback=true will install GLFW
@@ -1098,7 +1340,7 @@ int main() {
     int winW, winH;
     glfwGetWindowSize(window, &winW, &winH);
 
-    glClearColor(0.18f, 0.18f, 0.18f, 1.0f); // dark gray around the canvas
+    glClearColor(0.14f, 0.14f, 0.14f, 1.0f); // dark gray around the canvas
     glClear(GL_COLOR_BUFFER_BIT);
 
     // We append our little programs
