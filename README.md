@@ -12,7 +12,7 @@ A lightweight 2D pixel-art and raster graphics editor built in C++17 using OpenG
 *[Watch Demonstration Video on YouTube](https://youtu.be/2QBIYWBG42o)*
 
 ### Screenshots
-| Workspace & Tools | Affine Selection & Transforms |
+| Showcase #2 | Showcase #2 |
 | :---: | :---: |
 | ![Workspace Screenshot](https://github.com/user-attachments/assets/9cbd5dcf-f8e4-47de-86a4-c2a9b8ca379e) | ![Selection Transforms Screenshot](https://github.com/user-attachments/assets/3000744b-689b-4cbd-88f3-54aab847becb) |
 
